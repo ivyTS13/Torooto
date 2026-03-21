@@ -25,7 +25,6 @@ build/
 *.db
 *.sqlite
 *.sqlite3
-# If you don't want your raw scraped CSVs on GitHub:
 backend/data/*.csv
 
 # --- Operating System Files ---
