@@ -1,0 +1,39 @@
+# --- Python / Backend ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.python-version
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- JavaScript / Frontend ---
+node_modules/
+dist/
+build/
+.eslintcache
+.stylelintcache
+
+# --- Secrets & Environment Variables ---
+# NEVER share these!
+.env
+.env.local
+.env.*.local
+
+# --- Local Databases & Sensitive Data ---
+*.db
+*.sqlite
+*.sqlite3
+# If you don't want your raw scraped CSVs on GitHub:
+backend/data/*.csv
+
+# --- Operating System Files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editor Specific ---
+.vscode/
+.idea/
+*.swp
