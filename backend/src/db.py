@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 import uuid
 
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Boolean, Integer
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Boolean, Integer, Date
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -22,6 +22,9 @@ class Base(DeclarativeBase):
 class User(SQLAlchemyBaseUserTableUUID, Base):
     __tablename__ = "users"
     profile_image_url = Column(String, nullable=True)
+    name = Column(String, nullable=True)
+    birthday = Column(Date, nullable=True)
+    zodiac_sign = Column(String, nullable=True)
     piles = relationship("Pile", back_populates="user")
 
 
