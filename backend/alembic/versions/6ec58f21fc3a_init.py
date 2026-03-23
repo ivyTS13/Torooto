@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 36ca5a5c1980
+Revision ID: 6ec58f21fc3a
 Revises: 
-Create Date: 2026-03-21 18:04:40.524234
+Create Date: 2026-03-23 21:55:16.366100
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 import fastapi_users_db_sqlalchemy
 # revision identifiers, used by Alembic.
-revision: str = '36ca5a5c1980'
+revision: str = '6ec58f21fc3a'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -25,11 +25,17 @@ def upgrade() -> None:
     sa.Column('deck_id', sa.UUID(), nullable=False),
     sa.Column('deck_name', sa.String(), nullable=False),
     sa.Column('deck_type', sa.String(), nullable=False),
+    sa.Column('deck_content', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('is_deleted', sa.Boolean(), nullable=True),
+    sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('deck_id')
     )
     op.create_table('users',
     sa.Column('profile_image_url', sa.String(), nullable=True),
+    sa.Column('name', sa.String(), nullable=True),
+    sa.Column('birthday', sa.Date(), nullable=True),
+    sa.Column('zodiac_sign', sa.String(), nullable=True),
     sa.Column('id', fastapi_users_db_sqlalchemy.generics.GUID(), nullable=False),
     sa.Column('email', sa.String(length=320), nullable=False),
     sa.Column('hashed_password', sa.String(length=1024), nullable=False),
@@ -46,6 +52,8 @@ def upgrade() -> None:
     sa.Column('card_suit', sa.String(), nullable=False),
     sa.Column('card_metadata', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
     sa.Column('image_url', sa.String(), nullable=True),
+    sa.Column('is_deleted', sa.Boolean(), nullable=True),
+    sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['deck_id'], ['decks.deck_id'], ),
     sa.PrimaryKeyConstraint('card_id')
     )
@@ -53,6 +61,8 @@ def upgrade() -> None:
     sa.Column('pile_id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('drawn_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('is_deleted', sa.Boolean(), nullable=True),
+    sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('pile_id')
     )
@@ -62,6 +72,8 @@ def upgrade() -> None:
     sa.Column('card_id', sa.UUID(), nullable=False),
     sa.Column('reversed_card', sa.Boolean(), nullable=False),
     sa.Column('position', sa.Integer(), nullable=False),
+    sa.Column('is_deleted', sa.Boolean(), nullable=True),
+    sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['card_id'], ['cards.card_id'], ),
     sa.ForeignKeyConstraint(['pile_id'], ['piles.pile_id'], ),
     sa.PrimaryKeyConstraint('pile_content_id')

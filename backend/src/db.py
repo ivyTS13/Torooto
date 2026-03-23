@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 import uuid
 
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Boolean, Integer, Date
+from sqlalchemy import Column, String, DateTime, ForeignKey, Boolean, Integer, Date
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -33,9 +33,11 @@ class Deck(Base):
     deck_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     deck_name = Column(String, nullable=False)
     deck_type = Column(String, nullable=False)
+    deck_content = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True),
                         default=lambda: datetime.now(timezone.utc))
-
+    is_deleted = Column(Boolean, default= False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
     cards = relationship("Card", back_populates="deck",
                          cascade="all, delete-orphan")
 
@@ -49,7 +51,9 @@ class Card(Base):
     card_suit = Column(String, default="None", nullable=False)
     card_metadata = Column(JSONB, default={}, nullable=False)
     image_url = Column(String, nullable=True)
-
+    card_position = Column(Integer, nullable=False)
+    is_deleted = Column(Boolean, default= False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
     deck = relationship("Deck", back_populates="cards")
 
 
@@ -60,7 +64,8 @@ class Pile(Base):
         "users.id"), nullable=False)
     drawn_at = Column(DateTime(timezone=True),
                       default=lambda: datetime.now(timezone.utc))
-
+    is_deleted = Column(Boolean, default= False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
     user = relationship("User", back_populates="piles")
 
 
@@ -74,6 +79,8 @@ class PileContent(Base):
         "cards.card_id"), nullable=False)
     reversed_card = Column(Boolean, default=False, nullable=False)
     position = Column(Integer, nullable=False)
+    is_deleted = Column(Boolean, default= False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
 
 engine = create_async_engine(DATABASE_URL)

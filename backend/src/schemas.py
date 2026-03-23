@@ -50,7 +50,12 @@ class CardCSVRow(BaseModel):
 class DeckCreate(BaseModel):
     deck_name: str
     deck_type: str
+    deck_content: str
 
+class DeckUpdate(BaseModel):
+    deck_name: str
+    deck_content: str
+    
 class CardUpdate(BaseModel):
     card_name:str
     card_suit: str
