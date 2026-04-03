@@ -8,8 +8,8 @@ from src.db import get_async_session, User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, insert
 from src.images import imagekit
-from fastapi import  File, UploadFile, Form, Depends, APIRouter, HTTPException
-from src.schemas import CardCSVRow, DeckCreate, CardUpdate, CardImageUpdate, DeckUpdate
+from fastapi import  File, UploadFile, Depends, APIRouter, HTTPException
+from src.schemas import  DeckCreate, CardUpdate, CardImageUpdate, DeckUpdate
 from src.users import  current_active_user
 import re
 
@@ -17,7 +17,9 @@ router = APIRouter()
 
 @router.get("/list")
 async def get_decks(db: AsyncSession= Depends(get_async_session)):
-    result = await db.execute(select(Deck).where(Deck.is_deleted == False).order_by(Deck.created_at.desc()))
+    result = await db.execute(select(Deck)
+                              .where(Deck.is_deleted == False)
+                              .order_by(Deck.created_at.desc()))
     decks = [row[0] for row in result.all()]
     return {"decks": decks}
 
@@ -210,6 +212,7 @@ async def upload_cards_robust(
 
     for line_num, row in enumerate(reader, start=2):  # line 2 = first data row
         try:
+            print(f"Line {line_num}: suit column = '{row.get('suit')}'")
             # Build metadata dictionary from all extra columns
             metadata_dict = {}
             for orig_header, cleaned_key in header_to_cleaned.items():
@@ -222,9 +225,9 @@ async def upload_cards_robust(
                 "deck_id": deck_id,
                 "card_position": int(row.get("position")),
                 "card_name": row["Card Number & Name"],
-                "suit": row.get("suit" ),  # suit is required, but fallback provided
+                "card_suit": row.get("suit"),  # suit is required, but fallback provided
                 "image_url": row.get("image_url"),        # required, but .get for safety
-                "card_metadata": json.dumps(metadata_dict),    # store all extra info as JSON
+                "card_metadata": metadata_dict,    # store all extra info as JSON
                 "is_deleted": False
             })
 

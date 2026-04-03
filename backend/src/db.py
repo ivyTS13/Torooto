@@ -55,7 +55,7 @@ class Card(Base):
     is_deleted = Column(Boolean, default= False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     deck = relationship("Deck", back_populates="cards")
-
+    pile_contents = relationship("PileContent", back_populates="card")
 
 class Pile(Base):
     __tablename__ = "piles"
@@ -67,6 +67,7 @@ class Pile(Base):
     is_deleted = Column(Boolean, default= False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     user = relationship("User", back_populates="piles")
+    pile_contents = relationship("PileContent", back_populates="pile")
 
 
 class PileContent(Base):
@@ -81,6 +82,8 @@ class PileContent(Base):
     position = Column(Integer, nullable=False)
     is_deleted = Column(Boolean, default= False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+    pile = relationship("Pile", back_populates="pile_contents")
+    card = relationship("Card", back_populates="pile_contents")
 
 
 engine = create_async_engine(DATABASE_URL)

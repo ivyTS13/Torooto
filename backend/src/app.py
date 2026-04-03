@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Depends
 from src.schemas import UserRead, UserCreate, UserUpdate
 from src.users import auth_backend, current_active_user, fastapi_users
 from src.routers.deck_cards import router as deck_router
+from src.routers.pile_content import router as pile_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
@@ -24,3 +25,4 @@ app.include_router(
     prefix="/decks",       
     tags=["Decks"], 
 )
+app.include_router( pile_router)

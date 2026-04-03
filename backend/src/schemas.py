@@ -2,8 +2,10 @@ from datetime import date
 from pydantic import BaseModel, ConfigDict, field_validator, HttpUrl
 from fastapi_users import schemas
 import uuid
-from typing import Optional, Any
+from typing import Optional, Any, List
 import json
+from uuid import UUID
+from datetime import datetime
 class PostCreate(BaseModel):
     title: str
     content: str
@@ -73,3 +75,24 @@ class CardUpdate(BaseModel):
 
 class CardImageUpdate(BaseModel):
     image_url: str
+
+
+class CreatePileRequest(BaseModel):
+    number_of_cards: int
+    is_reversed: bool
+
+class PileContentResponse(BaseModel):
+    pile_content_id: UUID
+    card_id: UUID
+    card_name: str
+    card_suit: str
+    card_metadata: dict
+    image_url: Optional[str]
+    reversed_card: bool
+    position: int
+
+class PileResponse(BaseModel):
+    pile_id: UUID
+    user_id: UUID
+    drawn_at: datetime
+    cards: List[PileContentResponse]
