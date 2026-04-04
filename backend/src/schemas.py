@@ -1,5 +1,5 @@
 from datetime import date
-from pydantic import BaseModel, ConfigDict, field_validator, HttpUrl
+from pydantic import BaseModel, ConfigDict, field_validator
 from fastapi_users import schemas
 import uuid
 from typing import Optional, Any, List
@@ -15,6 +15,7 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
     name: str | None = None
     birthday: date | None = None
     zodiac_sign: str | None = None
+    image_url: Optional[str] =None
 
 # 2. What the user can submit during POST /auth/register
 class UserCreate(schemas.BaseUserCreate):
@@ -73,7 +74,7 @@ class CardUpdate(BaseModel):
                 raise ValueError("Invalid JSON format in metadata colum")
         return v or {}
 
-class CardImageUpdate(BaseModel):
+class ImageUpdate(BaseModel):
     image_url: str
 
 

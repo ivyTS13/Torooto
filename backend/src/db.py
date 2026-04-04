@@ -25,6 +25,7 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     name = Column(String, nullable=True)
     birthday = Column(Date, nullable=True)
     zodiac_sign = Column(String, nullable=True)
+    image_url = Column(String, nullable=True)
     piles = relationship("Pile", back_populates="user")
 
 

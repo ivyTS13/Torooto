@@ -26,7 +26,7 @@ const Navbar = ({
   };
 
   // Fallback for avatar
- const avatarUrl = user?.img_url || `https://ui-avatars.com/api/?name=${user?.name}&background=random`;
+ const avatarUrl = user?.image_url || `https://ui-avatars.com/api/?name=${user?.name}&background=random`;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/30 backdrop-blur-lg border-b border-white/10 shadow-lg">

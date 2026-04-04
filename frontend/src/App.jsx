@@ -10,6 +10,8 @@ import Profile from './pages/Profile';
 import useAuthStore from './stores/authStore';
 import DeckLibrary from './pages/DeckLibrary';
 import DeckExplorer from './pages/DeckExplorer';
+import AccessDenied from './pages/AccessDenied';
+import ServerError from './pages/ServerError';
 const App = () => {
    const { user } = useAuthStore();
   return (
@@ -29,6 +31,8 @@ const App = () => {
        <Route path="/login" element={!user ? <Login /> : <Navigate replace to="/" />} />
         <Route path="/register" element={!user ? <Register /> : <Navigate replace to="/" />} />
         <Route path="*" element={<NotFound />} />
+        <Route path="/500" element={<ServerError/>}/>
+        <Route path="/403" element={<AccessDenied/>}/>
       </Routes>
     </BrowserRouter>
   );
