@@ -2,49 +2,64 @@ import uuid
 from datetime import datetime, timezone
 import io
 import csv
-import json
 from src.db import Card, Deck
 from src.db import get_async_session, User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, insert
 from src.images import imagekit
-from fastapi import  File, UploadFile, Depends, APIRouter, HTTPException
-from src.schemas import  DeckCreate, CardUpdate, CardImageUpdate, DeckUpdate
-from src.users import  current_active_user
+from fastapi import  File, UploadFile, Depends, APIRouter, HTTPException, status
+from src.schemas import  DeckCreate, CardUpdate, ImageUpdate, DeckUpdate, CardCreate
+from src.users import  current_active_user, current_active_super_user
 import re
-
+import logging
 router = APIRouter()
-
+logger = logging.getLogger(__name__)
 @router.get("/list")
 async def get_decks(db: AsyncSession= Depends(get_async_session)):
     result = await db.execute(select(Deck)
                               .where(Deck.is_deleted == False)
                               .order_by(Deck.created_at.desc()))
     decks = [row[0] for row in result.all()]
-    return {"decks": decks}
+    return {
+        "success": True,
+        "data": decks,
+        "message": "Decks retrieved"
+    }
 
 @router.post("/add")
 async def add_new_deck(
     deck_in:  DeckCreate,
-    user: User =Depends(current_active_user),
+    user: User =Depends(current_active_super_user),
     db: AsyncSession= Depends(get_async_session)
 ):
-    new_deck = Deck(
+    try:
+        new_deck = Deck(
         deck_name = deck_in.deck_name,
         deck_type = deck_in.deck_type,
         deck_content = deck_in.deck_content
-    )
-    db.add(new_deck)
-    await db.commit()
-    await db.refresh(new_deck)
-    return {"status":"success", "deck": new_deck}
-
+        )
+        db.add(new_deck)
+        await db.commit()
+        await db.refresh(new_deck)
+        return {
+            "success": True,
+            "data": new_deck,
+            "message": "Added successfully"
+        }
+    except Exception as e:
+        await db.rollback() # Undo any partial changes
+        logger.error(f"Error creating deck: {e}")
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while creating the deck."
+        )
 
 @router.delete("/{deck_id}")
 async def delete_deck(
     deck_id: uuid.UUID,
     db: AsyncSession = Depends(get_async_session),
-    user: User =Depends(current_active_user)
+    user: User =Depends(current_active_super_user)
 ):
     try: 
         now = datetime.now(timezone.utc)
@@ -62,16 +77,24 @@ async def delete_deck(
             .values(is_deleted=True, deleted_at=now)
         )
         await db.commit()
-        return {"message": "Deck moved to trash"} 
+        return {
+            "success": True,
+            "data": deck,
+            "message": "Deck moved to trash"} 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error deleting deck: {e}")
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while deletting the deck."
+        )
     
 @router.put("/{deck_id}")
 async def update_deck(
     deck_data: DeckUpdate,
     deck_id: uuid.UUID,
     db: AsyncSession = Depends(get_async_session),
-    user: User =Depends(current_active_user)
+    user: User =Depends(current_active_super_user)
 ):
     try:
         result = await db.execute(update(Deck)
@@ -83,30 +106,91 @@ async def update_deck(
             raise HTTPException(status_code=404, detail="Card not found")
         
         await db.commit()
-
+        
+        return {
+            "success": True,
+            "data": updated_deck,
+            "message": "Deck updated successfully"} 
 
     except HTTPException as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error updating deck: {e}")
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while updating the deck."
+        )
 
 @router.post("/deck/{deck_id}/restore")
-async def restore_deck(deck_id: uuid.UUID, db: AsyncSession = Depends(get_async_session)):
-    await db.execute(
-        update(Deck)
-        .where(Deck.deck_id == deck_id)
-        .values(is_deleted=False, deleted_at=None)
-    )
-    # Also restore the cards
-    await db.execute(
-        update(Card).where(Card.deck_id == deck_id).values(is_deleted=False)
-    )
-    await db.commit()
-    return {"message": "Deck restored"}
+async def restore_deck(
+    deck_id: uuid.UUID, 
+    db: AsyncSession = Depends(get_async_session),
+    user: User =Depends(current_active_super_user)
+):
+    try:
+        # 1. Attempt to update the Deck
+        # We target the deck_id to bring it back from the "deleted" state
+        result = await db.execute(
+            update(Deck)
+            .where(Deck.deck_id == deck_id)
+            .values(is_deleted=False, deleted_at=None)
+            .returning(Deck) # This allows us to get the updated object back
+        )
+        
+        restored_deck = result.scalar_one_or_none()
+
+        # 2. Check if the deck actually existed
+        if not restored_deck:
+            return {
+                "success": False,
+                "data": None,
+                "message": f"Deck with ID {deck_id} not found."
+            }
+
+        # 3. Also restore the cards associated with this deck
+        await db.execute(
+            update(Card)
+            .where(Card.deck_id == deck_id)
+            .values(is_deleted=False, deleted_at=None)
+        )
+
+        # 4. Finalize the transaction
+        await db.commit()
+
+        return {
+            "success": True,
+            "data": restored_deck,
+            "message": "Deck and all associated cards have been restored."
+        }
+
+    except Exception as e:
+        await db.rollback()
+        # In a real app, log the error 'e' here
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while trying to restore the deck."
+        )
+    
+
+
 # Cards endpoints
 @router.get("/{deck_id}/cards")
-async def get_cards( deck_id:uuid.UUID,db: AsyncSession= Depends(get_async_session)):
-    result = await db.execute(select(Card).where(Card.deck_id == deck_id).order_by(Card.card_suit.desc()))
-    cards = [row[0] for row in result.all()]
-    return {"cards": cards}
+async def get_cards(deck_id: uuid.UUID, db: AsyncSession = Depends(get_async_session)):
+  
+    query = (
+        select(Card)
+        .where(Card.deck_id == deck_id)
+        .where(Card.is_deleted == False) 
+        .order_by(Card.card_suit, Card.card_position)
+    )
+    
+    result = await db.execute(query)
+    cards = result.scalars().all() 
+    
+    return {
+        "success": True,
+        "data": cards,
+        "message": "Cards retrieved"
+    }
 
 
 
@@ -115,20 +199,38 @@ async def update_card(
     card_id:uuid.UUID,
     card_data: CardUpdate,
     db: AsyncSession = Depends(get_async_session),
-    user: User =Depends(current_active_user),
+    user: User =Depends(current_active_super_user),
 ):
-    result = await db.execute(update(Card)
+   try:
+        result = await db.execute(update(Card)
                               .where(Card.card_id == card_id)
                               .values(**card_data.model_dump(exclude_unset=True))
                               .returning(Card))
 
-    updated_card = result.scalar_one_or_none()
-    if not updated_card:
-        raise HTTPException(status_code=404, detail="Card not found")
+        updated_card = result.scalar_one_or_none()
+        if not updated_card:
+            return {
+                    "success": False,
+                    "data": updated_card,
+                    "message": "Card not found"
+                }
 
-    await db.commit()
-    
-    return {"message": "Card updated successfully", "card": updated_card}
+        await db.commit()
+        
+        return {
+                "success": True,
+                "data": updated_card,
+                "message": "Card updated successfully"
+            }
+   except Exception as e:
+        await db.rollback()
+        logger.error(f"Failed to update card {card_id}: {e}")
+        
+        return {
+            "success": False,
+            "data": None,
+            "message": "An error occurred while updating the card"
+        }
 
 
 
@@ -136,22 +238,36 @@ async def update_card(
 async def update_card_image(
     card_id: uuid.UUID,
     file: UploadFile = File(...),
-    user:User =Depends(current_active_user),
+    user:User =Depends(current_active_super_user),
     db: AsyncSession = Depends(get_async_session)
 ):
     try:
         check_card = await db.execute(select(Card).where(Card.card_id == card_id))
-        if not check_card.scalar_one_or_none():
-          raise HTTPException(status_code=404, detail="Card not found")  
+        card_to_update = check_card.scalar_one_or_none()
+
+        if not card_to_update:
+            return {
+                "success": False,
+                "data": None,
+                "message": "Card not found or you do not have permission to edit it."
+            }
         file_content = await file.read()
-        upload_result = imagekit.files.upload(
-            file=file_content,
-            file_name=file.filename,
-            use_unique_file_name=True,
-            tags=["back-end-upload"],
-            folder="/cards"
-        )
-        updated_img =CardImageUpdate(
+        try:
+            upload_result = imagekit.files.upload(
+                file=file_content,
+                file_name=f"card_{card_id}_{file.filename}",
+                use_unique_file_name=True,
+                tags=["back-end-upload", f"deck_{card_to_update.deck_id}"],
+                folder="/cards"
+            )
+        except Exception as upload_err:
+            logger.error(f"ImageKit Upload failed: {upload_err}")
+            return {
+                "success": False,
+                "data": None,
+                "message": "Failed to upload image to storage provider."
+            }
+        updated_img =ImageUpdate(
              image_url= upload_result.url
          )
         result = await db.execute(update(Card)
@@ -159,23 +275,29 @@ async def update_card_image(
                                   .values(**updated_img.model_dump(exclude_unset=True))
                                   .returning(Card))
         updated_card = result.scalar_one_or_none()
-        if not updated_card:
-            raise HTTPException(status_code=404, detail="Card not found")
-
         await db.commit()
         
-        return {"message": "Card updated successfully", "card": updated_card}
+        return {
+            "success": True,
+            "data": updated_card,
+            "message": "Card image updated successfully."
+        }
     except Exception as e:
-        print(f"Error: {e}") 
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        await db.rollback()
+        logger.error(f"Unexpected error during image upload: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Internal Server Error"
+        )
     finally:
             await file.close()
 
-@router.post("/deck/{deck_id}/upload-cards")
+@router.post("/{deck_id}/upload-cards")
 async def upload_cards_robust(
     deck_id: uuid.UUID,
     file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    user: User =Depends(current_active_super_user)
 ):
     REQUIRED_HEADERS = {"Card Number & Name", "suit", "image_url", "position"}
 
@@ -190,6 +312,7 @@ async def upload_cards_robust(
     # Check that all required headers are present
     missing = REQUIRED_HEADERS - csv_headers
     if missing:
+        logger.error(f"Invalid cvs structure")
         raise HTTPException(
             status_code=400,
             detail=f"Invalid CSV structure. Missing columns: {', '.join(missing)}"
@@ -236,13 +359,85 @@ async def upload_cards_robust(
 
     if errors:
         return {
-            "status": "partial_failure",
+            "success": False,
             "message": "Some rows were invalid. No cards were saved.",
             "errors": errors
         }
 
     if new_cards:
-        await db.execute(insert(Card), new_cards)
+        stmt = insert(Card).values(new_cards).returning(Card)
+        result = await db.execute(stmt)
+        inserted_cards = result.scalars().all()  # list of Card ORM objects
         await db.commit()
+        final_card = inserted_cards
+    return {
+        "success": True,
+        "data": inserted_cards,
+        "message": f"Successfully uploaded {len(new_cards)} cards."}
 
-    return {"message": f"Successfully uploaded {len(new_cards)} cards."}
+
+@router.delete("/card/{card_id}")
+async def delete_card(
+    card_id: uuid.UUID,
+    db: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_super_user)
+):
+    try: 
+        now = datetime.now(timezone.utc)
+        
+        # FIX: .returning(Card) gives you the full object back
+        result = await db.execute(
+            update(Card)
+            .where(Card.card_id == card_id)
+            .values(is_deleted=True, deleted_at=now)
+            .returning(Card) 
+        )
+        
+        card = result.scalars().first()
+        
+        if not card:
+            raise HTTPException(status_code=404, detail="Card not found")
+            
+        await db.commit()
+        
+        return {
+            "success": True,
+            "data": card, # Now this is the full updated object
+            "message": "Card moved to trash" # 
+        } 
+    except Exception as e:
+        logger.error(f"Error deleting card: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while deleting the card."
+        )
+    
+@router.post("/{deck_id}/cards")
+async def add_card(
+    deck_id: uuid.UUID,
+    card_data: CardCreate,
+    db: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_super_user)
+):
+    try:
+        new_card = Card(
+            deck_id=deck_id,
+            card_name=card_data.card_name,
+            card_suit=card_data.card_suit,
+            card_position=card_data.card_position,
+            card_metadata=card_data.card_metadata,
+            is_deleted=False
+        )
+        
+        db.add(new_card)
+        await db.commit()
+        await db.refresh(new_card)
+        
+        return {
+            "success": True,
+            "data": new_card,
+            "message": "Card manifested successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error creating card: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create card")

@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Depends
+from fastapi import FastAPI
 from src.schemas import UserRead, UserCreate, UserUpdate
 from src.users import auth_backend, current_active_user, fastapi_users
 from src.routers.deck_cards import router as deck_router
 from src.routers.pile_content import router as pile_router
+from src.routers.user_router import router as user_router
+from fastapi.middleware.cors import CORSMiddleware
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
@@ -26,3 +28,15 @@ app.include_router(
     tags=["Decks"], 
 )
 app.include_router( pile_router)
+app.include_router( user_router)
+
+
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,            # Allows specific origins
+    allow_credentials=True,           # Required if you use Cookies or Auth headers
+    allow_methods=["*"],              # Allows all methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],              # Allows all headers (Content-Type, Authorization, etc.)
+)
