@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import axios from "axios";
-import {api} from '../services/api'
+import { api } from '../services/api'
 // Base URL for your FastAPI server
 const API_URL = "http://localhost:8000";
 
@@ -45,29 +45,29 @@ const useAuthStore = create(
       },
 
 
- updateAvatar: async (file) => {
-  set({ isLoading: true, error: null });
-  const { user, token } = get();
+      updateAvatar: async (file) => {
+        set({ isLoading: true, error: null });
+        const { user, token } = get();
 
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
 
-    const response = await api.patch(`/users/${user.id}/image`, formData, {
-      headers: {
-        'Content-Type': undefined,
-        Authorization: `Bearer ${token}`, // ensure token is sent
+          const response = await api.patch(`/users/${user.id}/image`, formData, {
+            headers: {
+              'Content-Type': undefined,
+              Authorization: `Bearer ${token}`, // ensure token is sent
+            },
+          });
+
+          set({ user: response, isLoading: false });
+          return { success: true };
+        } catch (err) {
+          set({ error: err.message || "Failed to upload image", isLoading: false });
+          console.error("Upload error:", err.response?.data); // log server response
+          return { success: false };
+        }
       },
-    });
-
-    set({ user: response, isLoading: false });
-    return { success: true };
-  } catch (err) {
-    set({ error: err.message || "Failed to upload image", isLoading: false });
-    console.error("Upload error:", err.response?.data); // log server response
-    return { success: false };
-  }
-},
       login: async (email, password) => {
         set({ isLoading: true, error: null });
         try {
@@ -156,7 +156,27 @@ const useAuthStore = create(
           localStorage.removeItem("auth-storage");
         }
       },
+      updateProfile: async (profileData) => {
+        set({ isLoading: true, error: null });
+        try {
+          // Automatically recalculate zodiac sign before sending
+          const zodiac_sign = getZodiacSign(profileData.birthday);
+          const payload = {
+            name: profileData.name,
+            birthday: profileData.birthday,
+            zodiac_sign
+          };
 
+          // Assuming your api utility handles the /users/me route
+          const response = await api.patch("/users/me", payload);
+
+          set({ user: response, isLoading: false });
+          return { success: true };
+        } catch (err) {
+          set({ error: err.message || "Failed to update scrolls", isLoading: false });
+          return { success: false };
+        }
+      },
       clearError: () => set({ error: null }),
     }),
     {

@@ -1,10 +1,10 @@
 
 from src.db import Card, Pile, PileContent, Deck, User, get_async_session
-from src.schemas import CreatePileRequest, PileContentResponse, PileResponse
+from src.schemas import CreatePileRequest
 from src.users import  current_active_user
 from fastapi import  Depends, APIRouter, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, insert
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime, timezone
 import random
@@ -46,7 +46,7 @@ async def add_new_pile(
     db: AsyncSession = Depends(get_async_session)
 ):
     # 1. Validation Logic
-    if request.number_of_cards < 1 or request.number_of_cards > 78: # Fixed your 12 vs 70 typo
+    if request.number_of_cards < 1 or request.number_of_cards > 78:
         return {
             "success": False,
             "data": None,

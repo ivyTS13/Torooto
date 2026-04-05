@@ -31,12 +31,7 @@ app.include_router( pile_router)
 app.include_router( user_router)
 
 
-origins = [
-    "http://localhost:5173",  # Default Vite port
-    "http://localhost:3000",  # Default CRA port
-    "http://127.0.0.1:5173",
- 
-]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,

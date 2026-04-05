@@ -73,7 +73,11 @@ class CardUpdate(BaseModel):
             except json.JSONDecodeError:
                 raise ValueError("Invalid JSON format in metadata colum")
         return v or {}
-
+class CardCreate(BaseModel):
+    card_name: str
+    card_suit: str
+    card_position: int
+    card_metadata: Optional[dict[str, Any]] = {}
 class ImageUpdate(BaseModel):
     image_url: str
 
