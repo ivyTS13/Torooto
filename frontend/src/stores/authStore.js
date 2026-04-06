@@ -3,8 +3,8 @@ import { persist } from "zustand/middleware";
 import axios from "axios";
 import { api } from '../services/api'
 // Base URL for your FastAPI server
-const API_URL = "http://localhost:8000";
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 // Helper: determine zodiac sign from birthday (YYYY-MM-DD)
 const getZodiacSign = (birthday) => {
   if (!birthday) return "";
