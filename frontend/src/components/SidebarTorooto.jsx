@@ -1,14 +1,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
-import {
-  Sparkles,
-  Library,
-  MessageSquare,
-  Settings,
-  ScrollText,
-  Flame,
-} from "lucide-react";
+import { Sparkles, Library, MessageSquare, Flame } from "lucide-react";
 import useAuthStore from "../stores/authStore";
 
 const Sidebar = ({ isOpen }) => {
@@ -17,7 +10,6 @@ const Sidebar = ({ isOpen }) => {
   const baseLinks = [
     { name: "Sanctum", icon: Sparkles, path: "/" },
     { name: "The Archives", icon: Library, path: "/decks" },
-    
   ];
   // Superuser‑only links
   const adminLinks = [
