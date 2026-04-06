@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { User, Mail, Key, Calendar, Sparkles, Loader2, AlertCircle, Wand2 } from 'lucide-react';
-import useAuthStore from '../stores/authStore';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  User,
+  Mail,
+  Key,
+  Calendar,
+  Sparkles,
+  Loader2,
+  AlertCircle,
+  Wand2,
+} from "lucide-react";
+import useAuthStore from "../stores/authStore";
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    name: '',
-    birthday: '',
+    email: "",
+    password: "",
+    name: "",
+    birthday: "",
   });
-  
+
   const { register, isLoading, error, clearError } = useAuthStore();
   const navigate = useNavigate();
 
@@ -22,7 +31,7 @@ const Register = () => {
     e.preventDefault();
     clearError();
     const success = await register(formData);
-    if (success) navigate('/');
+    if (success) navigate("/");
   };
 
   return (
@@ -33,11 +42,13 @@ const Register = () => {
 
       <div className="relative w-full max-w-lg">
         <div className="bg-black/40 backdrop-blur-2xl p-10 rounded-[3rem] shadow-2xl border border-white/10 relative overflow-hidden">
-          
           {/* Header Section */}
           <div className="text-center mb-10">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl mb-6 group">
-              <Wand2 className="text-emerald-400 group-hover:rotate-45 transition-transform duration-500" size={28} />
+              <Wand2
+                className="text-emerald-400 group-hover:rotate-45 transition-transform duration-500"
+                size={28}
+              />
             </div>
             <h2 className="text-3xl font-bold text-white tracking-tight font-serif italic">
               Begin Your Ascension
@@ -138,8 +149,13 @@ const Register = () => {
                 <Loader2 className="animate-spin" size={20} />
               ) : (
                 <>
-                  <span className="relative z-10 uppercase tracking-widest text-xs font-bold">Inscribe in the Records</span>
-                  <Sparkles size={16} className="relative z-10 text-emerald-200" />
+                  <span className="relative z-10 uppercase tracking-widest text-xs font-bold">
+                    Inscribe in the Records
+                  </span>
+                  <Sparkles
+                    size={16}
+                    className="relative z-10 text-emerald-200"
+                  />
                 </>
               )}
             </button>
@@ -149,8 +165,8 @@ const Register = () => {
           <div className="mt-10 text-center">
             <p className="text-gray-500 text-[11px] font-medium tracking-wide">
               Already walking the path?{" "}
-              <Link 
-                to="/login" 
+              <Link
+                to="/login"
                 className="text-emerald-400 hover:text-emerald-300 font-bold transition-colors underline underline-offset-4 decoration-emerald-500/30"
               >
                 Return to the Void
