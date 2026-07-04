@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import axios from "axios";
-import { api } from '../services/api'
+import { api } from "../services/api";
 // Base URL for your FastAPI server
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 // Helper: determine zodiac sign from birthday (YYYY-MM-DD)
 const getZodiacSign = (birthday) => {
   if (!birthday) return "";
@@ -44,26 +44,32 @@ const useAuthStore = create(
         }
       },
 
-
       updateAvatar: async (file) => {
         set({ isLoading: true, error: null });
         const { user, token } = get();
 
         try {
           const formData = new FormData();
-          formData.append('file', file);
+          formData.append("file", file);
 
-          const response = await api.patch(`/users/${user.id}/image`, formData, {
-            headers: {
-              'Content-Type': undefined,
-              Authorization: `Bearer ${token}`, // ensure token is sent
+          const response = await api.patch(
+            `/users/${user.id}/image`,
+            formData,
+            {
+              headers: {
+                "Content-Type": undefined,
+                Authorization: `Bearer ${token}`, // ensure token is sent
+              },
             },
-          });
+          );
 
           set({ user: response, isLoading: false });
           return { success: true };
         } catch (err) {
-          set({ error: err.message || "Failed to upload image", isLoading: false });
+          set({
+            error: err.message || "Failed to upload image",
+            isLoading: false,
+          });
           console.error("Upload error:", err.response?.data); // log server response
           return { success: false };
         }
@@ -137,6 +143,22 @@ const useAuthStore = create(
         }
       },
 
+      validateSession: async () => {
+        const { token, logout } = get();
+        if (!token) return false;
+
+        try {
+          const response = await axios.get(`${API_URL}/users/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          set({ user: response.data });
+          return true; // token still valid
+        } catch (err) {
+          await logout(); // clears user + token
+          return false;
+        }
+      },
+
       logout: async () => {
         const { token } = get();
         try {
@@ -164,7 +186,7 @@ const useAuthStore = create(
           const payload = {
             name: profileData.name,
             birthday: profileData.birthday,
-            zodiac_sign
+            zodiac_sign,
           };
 
           // Assuming your api utility handles the /users/me route
@@ -173,7 +195,10 @@ const useAuthStore = create(
           set({ user: response, isLoading: false });
           return { success: true };
         } catch (err) {
-          set({ error: err.message || "Failed to update scrolls", isLoading: false });
+          set({
+            error: err.message || "Failed to update scrolls",
+            isLoading: false,
+          });
           return { success: false };
         }
       },

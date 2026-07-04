@@ -32,7 +32,7 @@ const DeckExplorer = () => {
     });
     Object.keys(groups).forEach((suit) => {
       groups[suit].sort(
-        (a, b) => (a.card_position ?? 0) - (b.card_position ?? 0)
+        (a, b) => (a.card_position ?? 0) - (b.card_position ?? 0),
       );
     });
     const suitOrder = [
@@ -98,23 +98,24 @@ const DeckExplorer = () => {
     <div className="relative h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-950 via-purple-950/20 to-indigo-950/30 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-900/10 via-transparent to-transparent pointer-events-none" />
 
-      <div className="flex flex-col lg:flex-row gap-8 h-full p-6 lg:p-8 relative z-10 overflow-hidden">
-        {/* LEFT SIDE */}
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-8 h-full p-3 md:p-6 lg:p-8 relative z-10 overflow-hidden">
+        {/* LEFT SIDE – thumbnails */}
         <div
           className={`
-            transition-all duration-500
-            ${selectedCard ? "lg:w-36 w-full" : "w-full"}
-            h-full overflow-y-auto custom-scrollbar
-            ${selectedCard ? "overflow-x-hidden" : ""}
-          `}
+      transition-all duration-500
+      ${selectedCard ? "lg:w-36 lg:flex-shrink-0" : "w-full"}
+      ${selectedCard ? "max-lg:hidden" : ""}
+      h-full overflow-y-auto custom-scrollbar
+    `}
         >
           {!selectedCard ? (
+            /* FULL GRID VIEW */
             <div className="pr-2">
               <div className="mb-8">
-                <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight bg-gradient-to-r from-purple-200 to-indigo-300 bg-clip-text text-transparent">
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight bg-gradient-to-r from-purple-200 to-indigo-300 bg-clip-text text-transparent">
                   {deck.deck_name}
                 </h1>
-                <p className="text-purple-300 text-sm uppercase tracking-[0.3em] mt-2">
+                <p className="text-purple-300 text-xs md:text-sm uppercase tracking-[0.3em] mt-2">
                   {deck.deck_type}
                 </p>
                 <div className="w-20 h-[2px] bg-gradient-to-r from-purple-500 to-transparent mt-4" />
@@ -125,7 +126,7 @@ const DeckExplorer = () => {
                     <h3 className="text-purple-300 text-sm font-semibold uppercase tracking-wider mb-3 pl-1 border-l-3 border-purple-500">
                       {suit}s
                     </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                    <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-5 gap-3 md:gap-5">
                       {suitCards.map((card) => (
                         <CardThumbnail
                           key={card.card_id}
@@ -143,7 +144,8 @@ const DeckExplorer = () => {
               </div>
             </div>
           ) : (
-            <div className="flex flex-row lg:flex-col gap-5 items-center pr-1">
+            /* SELECTED MODE – only visible on lg+ screens */
+            <div className="hidden lg:flex flex-col gap-5 items-center pr-1 h-full overflow-y-auto custom-scrollbar">
               {cards.map((card) => (
                 <CardThumbnail
                   key={card.card_id}
@@ -159,98 +161,100 @@ const DeckExplorer = () => {
           )}
         </div>
 
-        {/* RIGHT SIDE DETAIL PANEL */}
-        <AnimatePresence mode="wait">
-          {selectedCard && (
+      {/* RIGHT SIDE DETAIL PANEL – full screen on mobile */}
+<AnimatePresence mode="wait">
+  {selectedCard && (
+    <motion.div
+      initial={{ x: 50, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: 50, opacity: 0 }}
+      className={`
+        flex-1 bg-black/40 backdrop-blur-2xl border border-purple-500/20
+        overflow-y-auto relative shadow-2xl custom-scrollbar min-h-0
+        max-lg:absolute max-lg:inset-0 max-lg:z-30 max-lg:rounded-none max-lg:border-0
+        lg:rounded-2xl
+      `}
+    >
+      <button
+        onClick={() => setSelectedCard(null)}
+        className="absolute top-4 right-4 z-20 p-2 rounded-full bg-purple-900/30 hover:bg-red-500/30 hover:text-red-300 transition-all backdrop-blur-sm border border-white/10"
+      >
+        <X size={18} />
+      </button>
+      <div className="p-4 md:p-6 lg:p-8">
+        <div className="flex flex-col md:flex-row gap-8">
+          <div className="flex justify-center md:w-2/5">
             <motion.div
-              initial={{ x: 50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 50, opacity: 0 }}
-              className="flex-1 bg-black/40 backdrop-blur-2xl border border-purple-500/20 rounded-2xl overflow-y-auto relative shadow-2xl custom-scrollbar"
+              layoutId={`card-${selectedCard.card_id}`}
+              className="w-full max-w-[200px] sm:max-w-[240px] md:max-w-[280px] aspect-[3/5] rounded-xl bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border-2 border-purple-400/40 shadow-2xl flex items-center justify-center overflow-hidden"
             >
-              <button
-                onClick={() => setSelectedCard(null)}
-                className="absolute top-4 right-4 z-20 p-2 rounded-full bg-purple-900/30 hover:bg-red-500/30 hover:text-red-300 transition-all backdrop-blur-sm border border-white/10"
-              >
-                <X size={18} />
-              </button>
-              <div className="p-6 lg:p-8">
-                <div className="flex flex-col md:flex-row gap-8">
-                  <div className="flex justify-center md:w-2/5">
-                    <motion.div
-                      layoutId={`card-${selectedCard.card_id}`}
-                      className="w-full max-w-[280px] aspect-[3/5] rounded-xl bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border-2 border-purple-400/40 shadow-2xl flex items-center justify-center overflow-hidden"
-                    >
-                      {selectedCard.image_url ? (
-                        <img
-                          src={selectedCard.image_url}
-                          alt={selectedCard.card_name}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <>
-                          <Sparkles size={48} className="text-purple-300/40" />
-                          <span className="text-purple-300/60 text-sm font-mono mt-2">
-                            ✦ {selectedCard.card_suit} ✦
-                          </span>
-                        </>
-                      )}
-                    </motion.div>
-                  </div>
-                  <div
-                    className="flex-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar"
-                    style={{ maxHeight: "calc(100vh - 200px)" }}
-                  >
-                    <div>
-                      <h2 className="text-3xl lg:text-4xl font-bold text-white mb-2">
-                        {selectedCard.card_name}
-                      </h2>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <span className="px-3 py-1 bg-purple-600/30 text-purple-200 rounded-full text-xs font-medium border border-purple-500/30">
-                          {selectedCard.card_suit}
-                        </span>
-                        <span className="px-3 py-1 bg-indigo-600/30 text-indigo-200 rounded-full text-xs font-medium border border-indigo-500/30">
-                          {selectedCard.card_metadata?.element_zodiac ||
-                            "Mystical"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      <span className="text-xs text-green-300 bg-green-900/30 px-3 py-1 rounded-full">
-                        🔮 Upright:{" "}
-                        {selectedCard.card_metadata?.upright_keywords}
-                      </span>
-                      <span className="text-xs text-rose-300 bg-rose-900/30 px-3 py-1 rounded-full">
-                        🌙 Reversed:{" "}
-                        {selectedCard.card_metadata?.reversed_keywords}
-                      </span>
-                    </div>
-                    <div className="space-y-5 pb-4">
-                      <div className="bg-white/5 rounded-xl p-5 border border-white/5">
-                        <h3 className="text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
-                          <span className="w-1 h-4 bg-emerald-400 rounded-full" />
-                          Upright Meaning
-                        </h3>
-                        <p className="text-gray-300 leading-relaxed text-sm">
-                          {selectedCard.card_metadata?.upright_meaning}
-                        </p>
-                      </div>
-                      <div className="bg-white/5 rounded-xl p-5 border border-white/5">
-                        <h3 className="text-rose-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
-                          <span className="w-1 h-4 bg-rose-400 rounded-full" />
-                          Reversed Meaning
-                        </h3>
-                        <p className="text-gray-400 leading-relaxed text-sm italic">
-                          {selectedCard.card_metadata?.reversed_meaning}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {selectedCard.image_url ? (
+                <img
+                  src={selectedCard.image_url}
+                  alt={selectedCard.card_name}
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <>
+                  <Sparkles size={48} className="text-purple-300/40" />
+                  <span className="text-purple-300/60 text-sm font-mono mt-2">
+                    ✦ {selectedCard.card_suit} ✦
+                  </span>
+                </>
+              )}
             </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
+          <div
+            className="flex-1 space-y-4 md:space-y-6 overflow-y-auto pr-2 custom-scrollbar"
+            style={{ maxHeight: "calc(100vh - 200px)" }}
+          >
+            <div>
+              <h2 className="text-xl md:text-3xl lg:text-4xl font-bold text-white mb-2">
+                {selectedCard.card_name}
+              </h2>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <span className="px-3 py-1 bg-purple-600/30 text-purple-200 rounded-full text-xs font-medium border border-purple-500/30">
+                  {selectedCard.card_suit}
+                </span>
+                <span className="px-3 py-1 bg-indigo-600/30 text-indigo-200 rounded-full text-xs font-medium border border-indigo-500/30">
+                  {selectedCard.card_metadata?.element_zodiac || "Mystical"}
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <span className="text-xs text-green-300 bg-green-900/30 px-3 py-1 rounded-full">
+                🔮 Upright: {selectedCard.card_metadata?.upright_keywords}
+              </span>
+              <span className="text-xs text-rose-300 bg-rose-900/30 px-3 py-1 rounded-full">
+                🌙 Reversed: {selectedCard.card_metadata?.reversed_keywords}
+              </span>
+            </div>
+            <div className="space-y-4 md:space-y-5 pb-4">
+              <div className="bg-white/5 rounded-xl p-4 md:p-5 border border-white/5">
+                <h3 className="text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-emerald-400 rounded-full" />
+                  Upright Meaning
+                </h3>
+                <p className="text-gray-300 leading-relaxed text-sm">
+                  {selectedCard.card_metadata?.upright_meaning}
+                </p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4 md:p-5 border border-white/5">
+                <h3 className="text-rose-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-rose-400 rounded-full" />
+                  Reversed Meaning
+                </h3>
+                <p className="text-gray-400 leading-relaxed text-sm italic">
+                  {selectedCard.card_metadata?.reversed_meaning}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )}
+</AnimatePresence>
       </div>
 
       {/* Tooltip Portal */}
@@ -283,7 +287,7 @@ const DeckExplorer = () => {
             </div>
             <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900/95 rotate-45 border-r border-b border-purple-500/30" />
           </div>,
-          document.body
+          document.body,
         )}
 
       <style>{`
