@@ -1,27 +1,51 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, RefreshCcw, Eye, AlertCircle, ArrowLeft } from "lucide-react";
+import {
+  Sparkles,
+  Loader2,
+  RefreshCcw,
+  Eye,
+  AlertCircle,
+  ArrowLeft,
+  BookOpen,
+  Star,
+} from "lucide-react";
 import useDrawerStore from "../stores/pileStore";
 
 export default function PileDrawer() {
   const [numCards, setNumCards] = useState(3);
   const [allowReversed, setAllowReversed] = useState(true);
 
-  const { 
-    drawnPile, 
-    flippedCards, 
-    isLoading, 
-    error, 
-    drawCards, 
-    toggleFlip, 
-    revealAll, 
+  const {
+    drawnPile,
+    flippedCards,
+    isLoading,
+    error,
+    drawCards,
+    toggleFlip,
+    revealAll,
     hideAll,
-    resetStore 
+    resetStore,
   } = useDrawerStore();
 
   const handleDraw = () => {
     drawCards(numCards, allowReversed);
   };
+
+  // Derived summary data from the drawn pile
+  const summaryCards = drawnPile?.cards.map((card, index) => ({
+    id: card.card_id,
+    name: card.card_name,
+    position: index + 1,
+    suit: card.card_suit,
+    reversed: card.reversed_card,
+    keywords: card.reversed_card
+      ? card.card_metadata?.reversed_keywords || "No reversed keywords available"
+      : card.card_metadata?.upright_keywords || "No upright keywords available",
+    meaning: card.reversed_card
+      ? card.card_metadata?.reversed_meaning || "No reversed meaning available"
+      : card.card_metadata?.upright_meaning || "No upright meaning available",
+  }));
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-950 via-purple-950/20 to-indigo-950/30 relative overflow-hidden flex flex-col">
@@ -30,12 +54,13 @@ export default function PileDrawer() {
       {/* Setup UI */}
       <AnimatePresence>
         {!drawnPile && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -100, height: 0, marginBottom: 0 }}
             className="relative z-20 max-w-4xl mx-auto w-full p-6 lg:p-12 text-center"
           >
+            {/* (setup form remains unchanged) */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6 bg-black/40 backdrop-blur-xl border border-purple-500/20 p-8 rounded-3xl shadow-2xl">
               <div className="flex items-center gap-4">
                 <label className="text-purple-200 font-medium text-sm">Number of Cards:</label>
@@ -72,7 +97,7 @@ export default function PileDrawer() {
       {/* Reading Controls */}
       <AnimatePresence>
         {drawnPile && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="relative z-20 flex flex-col md:flex-row items-center justify-between px-8 py-4 bg-black/20 backdrop-blur-sm border-b border-white/5"
@@ -112,17 +137,82 @@ export default function PileDrawer() {
           ))}
         </AnimatePresence>
       </div>
+
+      {/* ========== NEW: Key Summary Section ========== */}
+      <AnimatePresence>
+        {drawnPile && summaryCards && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            className="relative z-20 w-full max-w-6xl mx-auto px-4 pb-12"
+          >
+            <div className="bg-black/40 backdrop-blur-xl border border-purple-500/20 rounded-3xl p-6 lg:p-8 shadow-2xl">
+              <div className="flex items-center gap-3 mb-6">
+                <BookOpen className="text-purple-400 w-6 h-6" />
+                <h2 className="text-2xl font-serif italic text-white tracking-tight">
+                  Key Insights of Your Reading
+                </h2>
+              </div>
+
+              {/* Grid of summary cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {summaryCards.map((card) => (
+                  <motion.div
+                    key={card.id}
+                    whileHover={{ scale: 1.02 }}
+                    className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 flex flex-col"
+                  >
+                    {/* Header: position + name */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="text-purple-300 text-xs uppercase tracking-widest font-bold">
+                          Position {card.position}
+                        </p>
+                        <h3 className="text-white font-semibold text-lg mt-1">
+                          {card.name}
+                        </h3>
+                      </div>
+                      {card.reversed && (
+                        <span className="bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs px-2 py-1 rounded-full font-bold uppercase">
+                          Reversed
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Suit and zodiac/element info (optional) */}
+                    <div className="text-gray-400 text-xs mb-3 flex items-center gap-2">
+                      <span>{card.suit}</span>
+                      <span>·</span>
+                      <span>
+                        {card.reversed ? "Reversed" : "Upright"} energy
+                      </span>
+                    </div>
+
+                    {/* Keywords */}
+                    <div className="mt-auto">
+                      <p className="text-purple-200/80 text-sm font-medium leading-relaxed">
+                        <span className="text-purple-400 mr-1">Keywords:</span>
+                        {card.keywords}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* ========== End Summary Section ========== */}
     </div>
   );
 }
 
-// ----------------------------------------------------
-// Flippable Card with 3:5 aspect ratio
-// ----------------------------------------------------
+// FlippableCard component (unchanged)
 const FlippableCard = ({ card, isFlipped, onFlip }) => {
   return (
     <div
-      className="group w-44 lg:w-56 cursor-pointer"   // fixed width, height auto from aspect ratio
+      className="group w-44 lg:w-56 cursor-pointer"
       style={{ perspective: "1200px" }}
       onClick={onFlip}
     >
@@ -136,7 +226,7 @@ const FlippableCard = ({ card, isFlipped, onFlip }) => {
           transition={{ duration: 0.6, type: "spring", damping: 20 }}
           style={{ transformStyle: "preserve-3d" }}
         >
-          {/* BACK (unflipped) */}
+          {/* Back */}
           <div
             className="absolute inset-0 w-full h-full rounded-2xl border-2 border-purple-500/40 bg-gradient-to-b from-gray-900 to-purple-950 flex flex-col items-center justify-center overflow-hidden shadow-2xl"
             style={{ backfaceVisibility: "hidden" }}
@@ -145,7 +235,7 @@ const FlippableCard = ({ card, isFlipped, onFlip }) => {
             <Sparkles className="text-purple-400/30 w-12 h-12 lg:w-16 lg:h-16" />
           </div>
 
-          {/* FRONT (flipped) */}
+          {/* Front */}
           <div
             className="absolute inset-0 w-full h-full rounded-2xl border-2 shadow-2xl bg-gray-950 overflow-hidden"
             style={{
@@ -166,7 +256,6 @@ const FlippableCard = ({ card, isFlipped, onFlip }) => {
                   <p className="text-[10px] font-mono mt-3 text-purple-300/50 uppercase tracking-widest">{card.card_suit}</p>
                 </div>
               )}
-              {/* Gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent pointer-events-none" />
               <div className={`absolute bottom-4 left-0 right-0 text-center px-3 z-10 ${card.reversed_card ? "rotate-180 top-4 bottom-auto" : ""}`}>
                 <h3 className="text-white font-bold text-sm lg:text-base drop-shadow-lg tracking-tight">
