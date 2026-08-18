@@ -17,11 +17,11 @@ export default function SettingsPanel() {
     isSaved,
     isShuffling,
     isLoading,
+    error, // <-- IMPORT ERROR HERE
   } = useDrawerStore();
 
   const isBoardFull = drawnCards.length > 0 && !drawnCards.includes(null);
 
-  // Handlers for the custom number stepper
   const handleDecrement = () =>
     setSettings({ numCards: Math.max(1, numCards - 1) });
   const handleIncrement = () =>
@@ -51,7 +51,6 @@ export default function SettingsPanel() {
           border: isOpen ? "1px solid rgba(250,204,21,0.3)" : "none",
         }}
       >
-        {/* Toggle Button for Closing */}
         {isOpen && (
           <button
             onClick={(e) => {
@@ -75,7 +74,7 @@ export default function SettingsPanel() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="space-y-6">
-                {/* Custom Number Input */}
+                {/* --- CARD COUNTER --- */}
                 <div className="flex justify-between items-center">
                   <label className="text-sm font-medium text-zinc-300 drop-shadow-md">
                     Cards
@@ -99,7 +98,7 @@ export default function SettingsPanel() {
                   </div>
                 </div>
 
-                {/* Custom Segmented Control for Mode */}
+                {/* --- MODE TOGGLE --- */}
                 <div className="flex justify-between items-center">
                   <label className="text-sm font-medium text-zinc-300 drop-shadow-md">
                     Mode
@@ -125,8 +124,6 @@ export default function SettingsPanel() {
                     >
                       Manual
                     </button>
-
-                    {/* Animated pill background for active state */}
                     <motion.div
                       layout
                       className="absolute top-1 bottom-1 w-[60px] bg-amber-300 rounded-full shadow-[0_0_12px_rgba(252,211,77,0.7)] z-0"
@@ -144,7 +141,7 @@ export default function SettingsPanel() {
                   </div>
                 </div>
 
-                {/* Celestial Toggle Switch for Reversals */}
+                {/* --- REVERSAL TOGGLE --- */}
                 <div className="flex justify-between items-center">
                   <label className="text-sm font-medium text-zinc-300 drop-shadow-md">
                     Reversals
@@ -175,10 +172,8 @@ export default function SettingsPanel() {
                 </div>
               </div>
 
-              {/* Glowing Divider */}
               <div className="h-px w-full bg-gradient-to-r from-transparent via-amber-400/30 to-transparent shadow-[0_0_10px_rgba(252,211,77,0.3)]" />
 
-              {/* Actions */}
               <div className="flex flex-col gap-3">
                 <button
                   onClick={() => {
@@ -198,20 +193,37 @@ export default function SettingsPanel() {
                 </button>
 
                 {isBoardFull && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={savePile}
-                      disabled={isSaved || isLoading}
-                      className="flex-1 flex items-center justify-center gap-2 bg-black/40 border border-white/10 py-2.5 rounded-xl text-zinc-300 text-xs font-medium hover:bg-white/10 hover:text-white transition-all disabled:opacity-50"
-                    >
-                      <Save size={14} /> {isSaved ? "Saved" : "Save"}
-                    </button>
-                    <button
-                      onClick={resetBoard}
-                      className="flex-1 flex items-center justify-center gap-2 bg-black/40 border border-white/10 py-2.5 rounded-xl text-zinc-300 text-xs font-medium hover:bg-white/10 hover:text-white transition-all"
-                    >
-                      <RotateCcw size={14} /> Clear
-                    </button>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={savePile}
+                        disabled={isSaved || isLoading}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed
+                          ${
+                            isSaved
+                              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" // Green when saved
+                              : "bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 hover:text-blue-100" // Blue when ready to save
+                          }
+                        `}
+                      >
+                        <Save size={14} /> 
+                        {isLoading ? "Saving..." : isSaved ? "Saved!" : "Save Pile"}
+                      </button>
+                      <button
+                        onClick={resetBoard}
+                        disabled={isLoading}
+                        className="flex-1 flex items-center justify-center gap-2 bg-black/40 border border-white/10 py-2.5 rounded-xl text-zinc-300 text-xs font-medium hover:bg-white/10 hover:text-white transition-all disabled:opacity-50"
+                      >
+                        <RotateCcw size={14} /> Clear
+                      </button>
+                    </div>
+
+                    {/* NEW: Explicitly show backend errors so you know why saving failed */}
+                    {error && (
+                      <div className="mt-1 bg-red-500/10 border border-red-500/20 rounded-lg p-2 text-center text-xs text-red-400">
+                        {error}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
