@@ -441,3 +441,27 @@ async def add_card(
     except Exception as e:
         logger.error(f"Error creating card: {e}")
         raise HTTPException(status_code=500, detail="Failed to create card")
+
+@router.get("/tarot-cards")
+async def get_all_tarot_cards(db: AsyncSession = Depends(get_async_session)):
+    """Fetches all 78 Tarot cards for the frontend to manage drawing."""
+    try:
+        # Get Tarot deck
+        deck_result = await db.execute(select(Deck).where(Deck.deck_type == "Tarot", Deck.is_deleted == False))
+        deck = deck_result.scalar_one_or_none()
+        
+        if not deck:
+            return {"success": False, "data": [], "message": "Tarot deck not found"}
+
+        # Get all cards
+        card_result = await db.execute(select(Card).where(Card.deck_id == deck.deck_id, Card.is_deleted == False))
+        cards = card_result.scalars().all()
+
+        return {
+            "success": True,
+            "data": cards,
+            "message": "Tarot cards retrieved successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error fetching cards: {e}")
+        return {"success": False, "data": [], "message": "Failed to fetch cards"}

@@ -1,0 +1,93 @@
+import React, { useEffect } from "react";
+import { Loader2, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import PageLayout from "../components/User/UserLayout";
+import SettingsPanel from "../components/SettingPanel";
+import CardSlot from "../components/CardSlot";
+import SemicircleDeck from "../components/SemicircleDeck";
+import useDrawerStore from "../stores/pileStore";
+
+export default function ReadingRoom() {
+  const { fullDeck, fetchFullDeck, drawnCards, isShuffling, error, isFetchingDeck } = useDrawerStore();
+
+  useEffect(() => {
+    if (fullDeck.length === 0) fetchFullDeck();
+  }, [fullDeck.length, fetchFullDeck]);
+
+  if (isFetchingDeck) {
+    return (
+      <div className="h-screen bg-[#030014] flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-500/50" />
+        <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/50">
+          Gathering the deck...
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <PageLayout currentPath="/">
+      {/* Specific UI for Reading Room */}
+      <SettingsPanel />
+
+      {/* Error Message */}
+      {error && (
+        <div className="absolute top-20 md:top-8 left-0 right-0 flex justify-center z-40 px-4">
+          <div className="rounded-full border border-red-500/30 bg-red-500/10 px-6 py-2 backdrop-blur-xl text-red-200 text-xs md:text-sm text-center">
+            {error}
+          </div>
+        </div>
+      )}
+
+      {/* Shuffling Overlay */}
+      {isShuffling && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#030014]/60 backdrop-blur-2xl transition-all duration-500">
+          <div className="flex flex-col items-center gap-6">
+            <Loader2 className="w-10 h-10 animate-spin text-purple-400" />
+            <p className="uppercase tracking-[0.4em] text-xs text-purple-200/60 font-medium">
+              Synchronizing Energies
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 items-center justify-center pb-40 md:pb-56 pt-24 md:pt-0">
+        
+        {/* Empty State / Welcome Screen */}
+        {drawnCards.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className="flex flex-col items-center text-center px-6 max-w-lg z-10"
+          >
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full scale-150" />
+              <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-white/40 relative z-10" />
+            </div>
+            
+            <h1 className="text-3xl md:text-5xl font-serif italic text-white mb-4 md:mb-6 tracking-tight drop-shadow-lg">
+              Consult the Oracle
+            </h1>
+            
+            <p className="text-sm md:text-base text-gray-400 font-light leading-relaxed mb-8">
+              Focus your energy and set your intentions. Select a spread from the cosmos above, or draw directly from the deck below.
+            </p>
+            
+            <div className="h-[1px] w-12 bg-white/20" />
+          </motion.div>
+        ) : (
+          /* Responsive Card Slots */
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-8 lg:gap-14 w-full max-w-7xl px-4 z-10">
+            {drawnCards.map((_, index) => (
+              <CardSlot key={index} index={index} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <SemicircleDeck />
+    </PageLayout>
+  );
+}

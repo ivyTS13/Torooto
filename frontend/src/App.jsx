@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
-import ProtectedRoute from "./components/ProtectedRoute";   // new
+import ProtectedRoute from "./components/ProtectedRoute"; // new
 import "./App.css";
 import NotFound from "./pages/NotFound";
 import Register from "./pages/register";
@@ -18,9 +18,12 @@ import Login from "./pages/LoginPage";
 import { Loader2 } from "lucide-react";
 import PileList from "./pages/pilelist";
 import PileDetail from "./pages/PileDetail";
+import ReadingRoom from "./pages/ReadingRoom";
+import UserProfilePage from "./pages/UserProfile";
+import UserDeckExplorer from "./pages/UserDeckExplorer";
 
 const App = () => {
-  const { user, validateSession,token  } = useAuthStore();
+  const { user, validateSession, token } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
@@ -43,7 +46,9 @@ const App = () => {
     return (
       <div className="night-sky min-h-screen flex items-center justify-center bg-[#050505]">
         <Loader2 className="animate-spin text-purple-400" size={48} />
-        <p className="text-gray-500 text-sm mt-4">This may require up to 1 minute...</p>
+        <p className="text-gray-500 text-sm mt-4">
+          This may require up to 1 minute...
+        </p>
       </div>
     );
   }
@@ -52,23 +57,30 @@ const App = () => {
     <BrowserRouter>
       <Routes>
         {/* Layout wraps everything – navbar & sidebar are always visible */}
-        <Route element={<Layout />}>
           {/* Public routes (accessible without login) */}
-          <Route path="/decks" element={<DeckLibrary />} />
-          <Route path="/decks/:deckId" element={<DeckExplorer />} />
-
+          <Route path="/" element={<ReadingRoom />} />
+          <Route path="/tarot" element={<UserDeckExplorer />} />
+        <Route element={<Layout />}>
           {/* Protected routes – only visible when logged in */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<PileDrawer />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/piles/add" element={<PileDrawer />} />
+          <Route path="/decks" element={<DeckLibrary />} />
+          <Route path="/decks/:deckId" element={<DeckExplorer />} />
+            <Route path="admin/" element={<PileDrawer />} />
+            <Route path="admin/profile" element={<Profile />} />
+            <Route path="admin/piles/add" element={<PileDrawer />} />
             <Route path="/admin/decks" element={<DeckManagement />} />
-            <Route path="/admin/decks/:deckId/cards" element={<CardManagement />} />
+            <Route
+              path="/admin/decks/:deckId/cards"
+              element={<CardManagement />}
+            />
             <Route path="/piles" element={<PileList />} />
             <Route path="/piles/:pileId" element={<PileDetail />} />
           </Route>
         </Route>
-
+        {/* User version*/}
+          <Route element={<ProtectedRoute />}>
+          <Route path="/profile" element={<UserProfilePage/>}/>
+          </Route>
         {/* Standalone auth pages – redirect if already logged in */}
         <Route
           path="/login"

@@ -101,3 +101,11 @@ class PileResponse(BaseModel):
     user_id: UUID
     drawn_at: datetime
     cards: List[PileContentResponse]
+
+class FECardRequest(BaseModel):
+    card_id: uuid.UUID
+    reversed_card: bool
+    position: int
+
+class SavePileRequest(BaseModel):
+    cards: List[FECardRequest]
