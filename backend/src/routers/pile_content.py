@@ -1,6 +1,6 @@
 
 from src.db import Card, Pile, PileContent, Deck, User, get_async_session
-from src.schemas import CreatePileRequest
+from src.schemas import CreatePileRequest, SavePileRequest
 from src.users import  current_active_user
 from fastapi import  Depends, APIRouter, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -217,3 +217,33 @@ async def get_pile(
     except Exception as e:
         logger.error(f"Error fetching pile {pile_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch pile details")
+
+@router.post("/save-fe-pile")
+async def save_frontend_pile(
+    request: SavePileRequest,
+    user: User = Depends(current_active_user), # Only logged-in users can save
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Saves a pile that was drawn and shuffled entirely by the frontend."""
+    try:
+        # 1. Create the Pile record
+        new_pile = Pile(user_id=user.id, drawn_at=datetime.now(timezone.utc))
+        db.add(new_pile)
+        await db.flush()
+
+        # 2. Create PileContent entries from FE data
+        for card_data in request.cards:
+            pc = PileContent(
+                pile_id=new_pile.pile_id,
+                card_id=card_data.card_id,
+                reversed_card=card_data.reversed_card,
+                position=card_data.position
+            )
+            db.add(pc)
+            
+        await db.commit()
+        return {"success": True, "data": {"pile_id": new_pile.pile_id}, "message": "Pile saved successfully!"}
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Save Pile Error: {e}")
+        return {"success": False, "data": None, "message": "Failed to save pile"}

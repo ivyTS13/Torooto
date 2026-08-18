@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Yellow Moon Gradient -->
+    <linearGradient id="moonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE066" />
+      <stop offset="60%" stop-color="#FFC107" />
+      <stop offset="100%" stop-color="#FF9800" />
+    </linearGradient>
+
+    <!-- Cream Tarot Card Gradient -->
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF8E7" />
+      <stop offset="100%" stop-color="#F5E6C8" />
+    </linearGradient>
+
+    <!-- Gold Glow Filter -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Soft Shadow for Card -->
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="10" stdDeviation="15" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Transparent Background -->
+  <rect width="1024" height="1024" fill="transparent" />
+
+  <!-- Crescent Moon -->
+  <path d="M 640 180 A 300 300 0 1 0 840 600 A 260 260 0 1 1 640 180 Z" 
+        fill="url(#moonGrad)" filter="url(#glow)" opacity="0.95" />
+
+  <!-- Tarot Card -->
+  <g transform="rotate(-15, 300, 600)" filter="url(#shadow)">
+    <!-- Main Card Body -->
+    <rect x="220" y="480" width="200" height="320" rx="18" ry="18" 
+          fill="url(#cardGrad)" stroke="#B8860B" stroke-width="6" />
+    
+    <!-- Inner Decorative Border -->
+    <rect x="235" y="495" width="170" height="290" rx="12" ry="12" 
+          fill="none" stroke="#D4AF37" stroke-width="3" opacity="0.8" />
+    
+    <!-- Star on Card (Gold) -->
+    <path d="M 320 570 L 330 600 L 360 605 L 330 610 L 320 640 L 310 610 L 280 605 L 310 600 Z" 
+          fill="#D4AF37" filter="url(#glow)"/>
+    
+    <!-- Small Crescent Moon on Card (Gold) -->
+    <path d="M 320 700 A 30 30 0 1 0 350 740 A 25 25 0 1 1 320 700 Z" 
+          fill="#D4AF37" opacity="0.9"/>
+  </g>
+
+  <!-- Decorative Stars (Soft Gold) -->
+  <circle cx="200" cy="200" r="6" fill="#FFD700" opacity="0.8" filter="url(#glow)"/>
+  <circle cx="780" cy="280" r="5" fill="#FFD700" opacity="0.7" filter="url(#glow)"/>
+  <circle cx="180" cy="800" r="4" fill="#FFD700" opacity="0.6" filter="url(#glow)"/>
+  <circle cx="850" cy="700" r="7" fill="#FFD700" opacity="0.9" filter="url(#glow)"/>
+
+  <!-- Constellation Line -->
+  <path d="M 120 250 L 180 200 L 240 260" stroke="#FFD700" stroke-width="2" fill="none" opacity="0.5"/>
+</svg>

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+  <defs>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="50%" stop-color="#D4AF37" />
+      <stop offset="100%" stop-color="#FFE066" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Decorative crescent moon replacing the dot on 'i' or 'o'? We'll place it above the last 'o' -->
+  <!-- Main Text -->
+  <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" 
+        font-family="Georgia, 'Times New Roman', serif" font-size="90" font-style="italic" 
+        fill="url(#textGrad)" filter="url(#glow)" letter-spacing="4">
+    Torooto
+  </text>
+
+  <!-- Decorative crescent moon above the last 'o' (approx x=580, y=50) -->
+  <path d="M 580 45 A 30 30 0 1 0 610 75 A 25 25 0 1 1 580 45 Z" 
+        fill="#FFD700" filter="url(#glow)"/>
+
+  <!-- Small star accents -->
+  <circle cx="220" cy="50" r="4" fill="#FFD700" opacity="0.8" filter="url(#glow)"/>
+  <circle cx="680" cy="40" r="3" fill="#FFD700" opacity="0.7" filter="url(#glow)"/>
+
+  <!-- Underline flourish -->
+  <path d="M 100 150 Q 200 160 300 150 T 500 150 T 700 150" 
+        stroke="#D4AF37" stroke-width="2" fill="none" opacity="0.6"/>
+</svg>
