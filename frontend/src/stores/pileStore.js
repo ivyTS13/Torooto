@@ -113,12 +113,13 @@ const useDrawerStore = create((set, get) => ({
     set({ flippedCards: { ...flippedCards, [cardId]: !flippedCards[cardId] } });
   },
 
-  // 6. Save to Backend
+ // 6. Save to Backend
   savePile: async () => {
     const { drawnCards } = get();
     if (drawnCards.includes(null)) return; // Don't save incomplete piles
 
-    set({ isLoading: true });
+    // ADDED: Clear previous errors when initiating a new save
+    set({ isLoading: true, error: null }); 
     try {
       const payload = {
         cards: drawnCards.map((c, i) => ({
@@ -130,12 +131,10 @@ const useDrawerStore = create((set, get) => ({
       await api.post("/piles/save-fe-pile", payload);
       set({ isSaved: true, isLoading: false });
     } catch (err) {
-      // Improved error extraction
       const message = err.response?.data?.message || err.message || "Failed to save pile.";
       set({ error: message, isLoading: false });
     }
   },
-
   resetBoard: () =>
     set({
       drawnCards: Array(get().numCards).fill(null),

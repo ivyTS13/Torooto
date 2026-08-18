@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // Added navigate
 import { motion } from "framer-motion";
 import {
   User,
@@ -8,18 +9,30 @@ import {
   Camera,
   Loader2,
   Save,
-  X,
   Edit3,
   Sparkles,
+  Clock, // Added Clock
+  Eye,   // Added Eye
 } from "lucide-react";
 import PageLayout from "../components/User/UserLayout"; 
 import useAuthStore from "../stores/authStore";
+import usePileHistoryStore from "../stores/usePileHistoryStore"; // Added pile store
 
 const UserProfilePage = () => {
-  const { user, updateAvatar, updateProfile, isLoading } = useAuthStore();
+  const navigate = useNavigate();
+
+  // Alias isLoading to avoid conflicts between the two stores
+  const { user, updateAvatar, updateProfile, isLoading: isAuthLoading } = useAuthStore();
+  const { piles, isLoading: isPilesLoading, fetchPiles } = usePileHistoryStore();
+
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ name: "", birthday: "" });
   const fileInputRef = useRef(null);
+
+  // Fetch piles when component mounts
+  useEffect(() => {
+    fetchPiles();
+  }, [fetchPiles]);
 
   // Sync local form with user data when entering edit mode
   useEffect(() => {
@@ -43,6 +56,24 @@ const UserProfilePage = () => {
     const result = await updateProfile(formData);
     if (result.success) setIsEditing(false);
   };
+
+  const handleViewPile = (pileId) => {
+    navigate(`/piles/${pileId}`);
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Get only the top 5 most recent piles for the profile page
+  const recentPiles = piles.slice(0, 5);
 
   if (!user) {
     return (
@@ -102,7 +133,7 @@ const UserProfilePage = () => {
                     src={avatarUrl}
                     alt="Avatar"
                     className={`w-full h-full object-cover ${
-                      isLoading
+                      isAuthLoading
                         ? "opacity-30"
                         : "group-hover:scale-110 transition-transform duration-700"
                     }`}
@@ -111,7 +142,7 @@ const UserProfilePage = () => {
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <Camera className="text-white w-8 h-8 drop-shadow-lg" />
                 </div>
-                {isLoading && (
+                {isAuthLoading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full">
                     <Loader2 className="animate-spin text-purple-400" />
                   </div>
@@ -131,7 +162,7 @@ const UserProfilePage = () => {
                   <>
                     <button
                       onClick={handleSave}
-                      disabled={isLoading}
+                      disabled={isAuthLoading}
                       className="w-full py-3 bg-purple-600 hover:bg-purple-500 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-900/40"
                     >
                       <Save size={18} /> Save Changes
@@ -173,7 +204,7 @@ const UserProfilePage = () => {
             </motion.div>
           </div>
 
-          {/* RIGHT: Details */}
+          {/* RIGHT: Details & Recent Readings */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -249,14 +280,63 @@ const UserProfilePage = () => {
               </div>
             </div>
 
-            {/* Optional: Recent Activity Placeholder */}
+            {/* Recent Activity List */}
             <div className="bg-black/40 backdrop-blur-xl border border-white/5 p-8 rounded-[2.5rem] shadow-2xl">
-              <h3 className="text-lg font-semibold text-purple-200 mb-4">
-                Recent Readings
-              </h3>
-              <div className="text-gray-500 text-sm italic">
-                No readings yet. Start a new reading to see your history here.
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-purple-200">
+                  Recent Readings
+                </h3>
+                {piles.length > 5 && (
+                  <button
+                    onClick={() => navigate("/piles")}
+                    className="text-xs font-semibold text-purple-400 hover:text-purple-300 uppercase tracking-wider transition-colors"
+                  >
+                    View All
+                  </button>
+                )}
               </div>
+
+              {isPilesLoading && piles.length === 0 ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="animate-spin text-purple-500/50" size={24} />
+                </div>
+              ) : recentPiles.length === 0 ? (
+                <div className="text-gray-500 text-sm italic py-8 text-center bg-white/[0.02] border border-white/5 rounded-2xl">
+                  No readings yet. Start a new reading to see your history here.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentPiles.map((pile) => (
+                    <div
+                      key={pile.pile_id}
+                      className="bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 rounded-2xl p-4 flex items-center justify-between transition-colors group"
+                    >
+                      <div>
+                        <div className="text-purple-50 font-mono text-xs mb-1.5">
+                          {pile.pile_id.split("-")[0]}
+                        </div>
+                        <div className="flex items-center gap-3 text-gray-400 text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={12} className="text-purple-400/70" />
+                            {formatDate(pile.drawn_at)}
+                          </div>
+                          <span className="px-2 py-0.5 bg-purple-950/30 text-purple-400 border border-purple-500/20 rounded-full text-[9px] font-bold uppercase tracking-widest">
+                            {pile.pile_contents?.length || 0} Card
+                            {pile.pile_contents?.length !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleViewPile(pile.pile_id)}
+                        className="p-2.5 text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all"
+                        title="View Reading"
+                      >
+                        <Eye size={18} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         </div>
