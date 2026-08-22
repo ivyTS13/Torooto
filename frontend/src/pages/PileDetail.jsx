@@ -11,37 +11,79 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
+import usePileHistoryStore from "../stores/usePileHistoryStore";
 
 export default function PileDetail() {
   const { pileId } = useParams();
   const navigate = useNavigate();
+  const { piles } = usePileHistoryStore();
 
   const [pileData, setPileData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [flippedCards, setFlippedCards] = useState({});
 
-  // Fetch pile details on mount
+  // Helper to normalize data: ensure it has a `cards` array
+  const normalizeData = (data) => {
+    if (!data) return null;
+
+    // If data already has `cards`, use it directly
+    if (Array.isArray(data.cards)) {
+      return { ...data, cards: data.cards };
+    }
+
+    // If data has `pile_contents` (from the store), convert to `cards`
+    if (Array.isArray(data.pile_contents)) {
+      return { ...data, cards: data.pile_contents };
+    }
+
+    // Fallback: no cards found
+    return { ...data, cards: [] };
+  };
+
   useEffect(() => {
-    const fetchPile = async () => {
-      try {
-        setIsLoading(true);
-        const data = await api.get(`/piles/${pileId}`);
-        setPileData(data);
-        // Start with all cards revealed
+    let isMounted = true;
+
+    const initializePile = (data) => {
+      const normalized = normalizeData(data);
+      if (!normalized) return;
+
+      if (isMounted) {
+        setPileData(normalized);
         const allFlipped = {};
-        data.cards.forEach((card) => {
+        normalized.cards.forEach((card) => {
           allFlipped[card.card_id] = true;
         });
         setFlippedCards(allFlipped);
-      } catch (err) {
-        setError(err || "Failed to load reading.");
-      } finally {
         setIsLoading(false);
       }
     };
-    fetchPile();
-  }, [pileId]);
+
+    const fetchFromApi = async () => {
+      try {
+        setIsLoading(true);
+        const data = await api.get(`/piles/${pileId}`);
+        if (isMounted) initializePile(data);
+      } catch (err) {
+        if (isMounted) {
+          setError(err || "Failed to load reading.");
+          setIsLoading(false);
+        }
+      }
+    };
+
+    // First, try to find the pile in the store
+    const existingPile = piles.find((p) => p.pile_id === pileId);
+    if (existingPile) {
+      initializePile(existingPile);
+    } else {
+      fetchFromApi();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pileId, piles]);
 
   const toggleFlip = useCallback((cardId) => {
     setFlippedCards((prev) => ({ ...prev, [cardId]: !prev[cardId] }));
@@ -49,7 +91,7 @@ export default function PileDetail() {
 
   const revealAll = () => {
     const allFlipped = {};
-    pileData.cards.forEach((card) => {
+    pileData?.cards.forEach((card) => {
       allFlipped[card.card_id] = true;
     });
     setFlippedCards(allFlipped);
@@ -57,7 +99,7 @@ export default function PileDetail() {
 
   const hideAll = () => setFlippedCards({});
 
-  // Derived summary (same logic as PileDrawer)
+  // Derived summary
   const summaryCards = pileData?.cards.map((card, index) => ({
     id: card.card_id,
     name: card.card_name,
@@ -102,7 +144,7 @@ export default function PileDetail() {
       {/* Reading Controls */}
       <div className="relative z-20 flex flex-col md:flex-row items-center justify-between px-8 py-4 bg-black/20 backdrop-blur-sm border-b border-white/5">
         <button
-          onClick={() => navigate("/piles")}
+          onClick={() => navigate("/admin/piles")}  // ← Adjust to your list route (e.g. "/piles" if not admin)
           className="flex items-center gap-2 text-purple-300 hover:text-white transition-colors text-sm font-medium"
         >
           <ArrowLeft size={16} /> Back to Chronicles
@@ -144,7 +186,7 @@ export default function PileDetail() {
       </div>
 
       {/* Key Summary Section */}
-      {summaryCards && (
+      {summaryCards && summaryCards.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -197,7 +239,6 @@ export default function PileDetail() {
     </div>
   );
 }
-
 // Reusable FlippableCard – identical to the one in PileDrawer
 const FlippableCard = ({ card, isFlipped, onFlip }) => {
   return (

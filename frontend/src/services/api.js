@@ -1,15 +1,15 @@
-import axios from 'axios';
-import useAuthStore from '../stores/authStore';
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import axios from "axios";
+import useAuthStore from "../stores/authStore";
+
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5146";
 const apiClient = axios.create({
-  baseURL: baseURL,
+  baseURL,
   headers: {
-    'Content-Type': undefined,
+    "Content-Type": undefined,
   },
 });
 
 // --- REQUEST INTERCEPTOR ---
-// Automatically adds the token to every request if it exists
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
   if (token) {
@@ -19,28 +19,42 @@ apiClient.interceptors.request.use((config) => {
 });
 
 // --- RESPONSE INTERCEPTOR ---
-// Handles the "Envelope Pattern" and global errors
 apiClient.interceptors.response.use(
   (response) => {
-    // If your backend follows the { success, data, message } structure
-    // we return response.data.data directly to the component
-    return response.data?.data !== undefined ? response.data.data : response.data;
+    // If your backend uses { success, data, message } envelope
+    return response.data?.data !== undefined
+      ? response.data.data
+      : response.data;
   },
   (error) => {
     const status = error.response?.status;
-    
+    const url = error.config?.url;  // get the request URL
+
     if (status === 401) {
-      // Unauthorized: Clear store and redirect to login
+      // ⚠️ Skip automatic logout for login and logout endpoints
+      if (url && (url.includes("/auth/jwt/login") || url.includes("/auth/jwt/logout"))) {
+        // Just reject with the error message – the component (login) will handle it
+        return Promise.reject(
+          error.response?.data?.message || "Unauthorized"
+        );
+      }
+
+      // For all other endpoints, clear session and redirect
       useAuthStore.getState().logout();
-      window.location.href = '/login';
-    } else if (status === 403) {
-      window.location.href = '/403';
-    } else if (status >= 500) {
-      window.location.href = '/500';
+      window.location.href = "/login";
+      return Promise.reject("Session expired");
     }
 
-    return Promise.reject(error.response?.data?.message || "Something went wrong");
-  }
+    if (status === 403) {
+      window.location.href = "/403";
+    } else if (status >= 500) {
+      window.location.href = "/500";
+    }
+
+    return Promise.reject(
+      error.response?.data?.message || "Something went wrong"
+    );
+  },
 );
 
 // --- WRAPPER FUNCTIONS ---

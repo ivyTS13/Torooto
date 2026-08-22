@@ -21,6 +21,8 @@ import PileDetail from "./pages/PileDetail";
 import ReadingRoom from "./pages/ReadingRoom";
 import UserProfilePage from "./pages/UserProfile";
 import UserDeckExplorer from "./pages/UserDeckExplorer";
+import UserPileList from "./pages/UserPileList";
+import UserPileDetail from "./pages/UserPileDetail";
 
 const App = () => {
   const { user, validateSession, token } = useAuthStore();
@@ -57,30 +59,30 @@ const App = () => {
     <BrowserRouter>
       <Routes>
         {/* Layout wraps everything – navbar & sidebar are always visible */}
-          {/* Public routes (accessible without login) */}
-          <Route path="/" element={<ReadingRoom />} />
-          <Route path="/tarot" element={<UserDeckExplorer />} />
+        {/* Public routes (accessible without login) */}
+        <Route path="/" element={<ReadingRoom />} />
+        <Route path="/tarot" element={<UserDeckExplorer />} />
         <Route element={<Layout />}>
           {/* Protected routes – only visible when logged in */}
-          <Route element={<ProtectedRoute />}>
-          <Route path="/decks" element={<DeckLibrary />} />
-          <Route path="/decks/:deckId" element={<DeckExplorer />} />
-            <Route path="admin/" element={<PileDrawer />} />
-            <Route path="admin/profile" element={<Profile />} />
-            <Route path="admin/piles/add" element={<PileDrawer />} />
+          <Route element={<ProtectedRoute adminOnly />}>
+            <Route path="/admin" element={<PileDrawer />} /> // or a dashboard
             <Route path="/admin/decks" element={<DeckManagement />} />
             <Route
               path="/admin/decks/:deckId/cards"
               element={<CardManagement />}
             />
-            <Route path="/piles" element={<PileList />} />
-            <Route path="/piles/:pileId" element={<PileDetail />} />
+            <Route path="/admin/piles" element={<PileList />} />
+            <Route path="/admin/piles/:pileId" element={<PileDetail />} />
+            <Route path="/admin/piles/add" element={<PileDrawer />} />
+            <Route path="/admin/profile" element={<Profile />} />
           </Route>
         </Route>
         {/* User version*/}
-          <Route element={<ProtectedRoute />}>
-          <Route path="/profile" element={<UserProfilePage/>}/>
-          </Route>
+        <Route element={<ProtectedRoute />}>
+          <Route path="/profile" element={<UserProfilePage />} />
+          <Route path="/piles" element={<UserPileList />} />
+          <Route path="/piles/:pileId" element={<UserPileDetail />} />
+        </Route>
         {/* Standalone auth pages – redirect if already logged in */}
         <Route
           path="/login"

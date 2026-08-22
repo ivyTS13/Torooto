@@ -18,7 +18,7 @@ export default function PageLayout({ children, currentPath }) {
       {/* ========================================================= */}
       {/* Custom Animations for Portal-like Stars */}
       {/* ========================================================= */}
-     <style>{`
+      <style>{`
   @keyframes twinkle {
     0%, 100% { opacity: 0.2; transform: scale(0.8); }
     50% { opacity: 1; transform: scale(1.2); }
@@ -86,29 +86,25 @@ export default function PageLayout({ children, currentPath }) {
       </div>
 
       {/* Shooting Stars */}
-<div className="absolute inset-0 overflow-hidden pointer-events-none">
-  <div
-    className="absolute top-[-10%] right-[-10%] w-[184px] h-[2px] bg-gradient-to-r from-transparent via-white to-transparent"
-    style={{ animation: "shootingStar 7s infinite 1s" }}
-  />
-  <div
-    className="absolute top-[-5%] right-[-15%] w-[220px] h-[2px] bg-gradient-to-r from-transparent via-blue-200 to-transparent"
-    style={{ animation: "shootingStar 9s infinite 4s" }}
-  />
-  <div
-    className="absolute top-[10%] right-[-20%] w-[150px] h-[2px] bg-gradient-to-r from-transparent via-purple-200 to-transparent"
-    style={{ animation: "shootingStar 12s infinite 8s" }}
-  />
-</div>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div
+          className="absolute top-[-10%] right-[-10%] w-[184px] h-[2px] bg-gradient-to-r from-transparent via-white to-transparent"
+          style={{ animation: "shootingStar 7s infinite 1s" }}
+        />
+        <div
+          className="absolute top-[-5%] right-[-15%] w-[220px] h-[2px] bg-gradient-to-r from-transparent via-blue-200 to-transparent"
+          style={{ animation: "shootingStar 9s infinite 4s" }}
+        />
+        <div
+          className="absolute top-[10%] right-[-20%] w-[150px] h-[2px] bg-gradient-to-r from-transparent via-purple-200 to-transparent"
+          style={{ animation: "shootingStar 12s infinite 8s" }}
+        />
+      </div>
       {/* ========================================================= */}
       {/* Shared Navigation Layer */}
       {/* ========================================================= */}
       <UserNavbar currentPath={currentPath} />
-
-      {/* ========================================================= */}
-      {/* Page Content Layer */}
-      {/* ========================================================= */}
-      <main className="relative z-20 flex min-h-screen flex-col pt-24">
+      <main className="relative z-20 flex min-h-screen flex-col items-center justify-center px-4 pt-20 pb-10">
         {children}
       </main>
     </div>

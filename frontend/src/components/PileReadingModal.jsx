@@ -1,13 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  Sparkles,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { X, Sparkles } from "lucide-react";
 
 // SVG Pentacle Icon
 export const PentacleIcon = ({ className = "w-6 h-6" }) => (
@@ -27,55 +21,46 @@ export const PentacleIcon = ({ className = "w-6 h-6" }) => (
   </svg>
 );
 
-// Carousel slide variants
-const slideVariants = {
-  enter: (direction) => ({
-    x: direction > 0 ? 300 : -300,
-    opacity: 0,
-    scale: 0.95,
-  }),
-  center: {
-    zIndex: 1,
-    x: 0,
+// Framer Motion Variants for Staggered List
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
     opacity: 1,
-    scale: 1,
-    transition: { duration: 0.4, ease: "easeOut" },
+    transition: { staggerChildren: 0.1, delayChildren: 0.2 },
   },
-  exit: (direction) => ({
-    zIndex: 0,
-    x: direction < 0 ? 300 : -300,
-    opacity: 0,
-    scale: 0.95,
-    transition: { duration: 0.3, ease: "easeIn" },
-  }),
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 30, scale: 0.95 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { type: "spring", stiffness: 200, damping: 20 },
+  },
 };
 
 export default function PileReadingModal({ drawnCards = [] }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [direction, setDirection] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
-  // Safely filter valid cards
-  const validCards = Array.isArray(drawnCards)
-    ? drawnCards.filter((card) => card && (card.card_name || card.name))
-    : [];
-
-  // Reset to first card when modal opens
+  // SSR Safe Portal rendering
   useEffect(() => {
-    if (isOpen) {
-      setCurrentIndex(0);
-      setDirection(0);
-    }
-  }, [isOpen]);
+    setMounted(true);
+  }, []);
 
-  // Lock body scroll & listen for Escape/Arrow keys when modal is open
+  // Memoize valid cards to prevent unnecessary recalculations
+  const validCards = useMemo(() => {
+    return Array.isArray(drawnCards)
+      ? drawnCards.filter((card) => card && (card.card_name || card.name))
+      : [];
+  }, [drawnCards]);
+
+  // Lock body scroll & listen for Escape key
   useEffect(() => {
     if (!isOpen) return;
-
     const handleKeyDown = (e) => {
       if (e.key === "Escape") setIsOpen(false);
-      if (e.key === "ArrowRight") paginate(1);
-      if (e.key === "ArrowLeft") paginate(-1);
     };
 
     document.body.style.overflow = "hidden";
@@ -85,204 +70,177 @@ export default function PileReadingModal({ drawnCards = [] }) {
       document.body.style.overflow = "unset";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, validCards.length]);
+  }, [isOpen]);
 
-  const paginate = (newDirection) => {
-    if (validCards.length <= 1) return;
-    setDirection(newDirection);
-    setCurrentIndex((prevIndex) => {
-      let nextIndex = prevIndex + newDirection;
-      if (nextIndex < 0) nextIndex = validCards.length - 1;
-      if (nextIndex >= validCards.length) nextIndex = 0;
-      return nextIndex;
-    });
-  };
-
-  // Format keywords whether they arrive as an array or string
   const formatKeywords = (keywords) => {
     if (!keywords) return "N/A";
     if (Array.isArray(keywords)) return keywords.join(", ");
     return String(keywords);
   };
 
-  if (validCards.length === 0) return null;
-
-  const activeCard = validCards[currentIndex];
-  const cardName = activeCard?.card_name || activeCard?.name;
-  const metadata = activeCard?.card_metadata || {};
+  if (!mounted || validCards.length === 0) return null;
 
   const modal = isOpen ? (
     <AnimatePresence>
+      {/* Backdrop */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-[#030014]/85 backdrop-blur-2xl"
+        initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
+        animate={{ opacity: 1, backdropFilter: "blur(24px)" }}
+        exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
+        transition={{ duration: 0.4 }}
+        className="fixed inset-0 z-[99999] flex items-center justify-center p-0 md:p-6 bg-black/60"
         onClick={() => setIsOpen(false)}
       >
+        {/* Modal Container */}
         <motion.div
-          initial={{ scale: 0.96, opacity: 0, y: 24 }}
+          initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.96, opacity: 0, y: 24 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          drag="y"
-          dragConstraints={{ top: 0, bottom: 200 }}
-          dragElastic={{ top: 0, bottom: 0.5 }}
-          dragDirectionLock
-          onDragEnd={(e, info) => {
-            if (info.offset.y > 100 || info.velocity.y > 500) {
-              setIsOpen(false);
-            }
-          }}
-          className="relative w-full max-w-6xl max-h-[92vh] bg-[#0a0a18]/92 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-[0_40px_80px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col cursor-auto md:cursor-default"
+          exit={{ scale: 0.95, opacity: 0, y: 20 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} // smooth ease-out
+          className="relative w-full h-full md:h-auto md:max-h-[90vh] max-w-6xl flex flex-col cursor-auto md:rounded-[2.5rem] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* very small drag handle */}
-          <div className="w-full pt-2 pb-1 flex flex-col items-center justify-center bg-white/[0.02] border-b border-white/5 shrink-0 select-none md:hidden cursor-grab active:cursor-grabbing">
-            <div className="w-11 h-1.5 rounded-full bg-white/20 transition-colors" />
-            <div className="flex items-center gap-1 text-[10px] uppercase font-mono tracking-widest text-purple-300/50 mt-1">
-              <motion.div
-                animate={{ y: [0, 3, 0] }}
-                transition={{
-                  duration: 1.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              >
-                <ChevronDown size={12} />
-              </motion.div>
-              <span>Swipe down to close</span>
-            </div>
-          </div>
+          {/* Cosmic Glass Background Layer */}
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/80 via-[#0a0a1a]/90 to-purple-950/80 -z-10" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent -z-10" />
+          <div className="absolute inset-0 border border-white/10 md:rounded-[2.5rem] pointer-events-none -z-10 shadow-[inset_0_0_40px_rgba(139,92,246,0.1)]" />
 
-          {/* compact header */}
-          <div className="relative px-4 py-3 md:px-5 md:py-4 border-b border-white/5 flex items-center justify-between shrink-0 bg-white/[0.02]">
-            <div className="flex items-center gap-3 min-w-0">
+          {/* Header */}
+          <div className="relative z-10 px-5 py-4 md:px-8 md:py-6 flex items-center justify-between border-b border-white/5 bg-black/20 backdrop-blur-md">
+            <div className="flex items-center gap-4 min-w-0">
               <motion.div
-                animate={{ scale: [1, 1.04, 1] }}
-                transition={{ duration: 4, repeat: Infinity }}
-                className="text-amber-300 drop-shadow-[0_0_15px_rgba(252,211,77,0.35)] shrink-0"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+                className="text-amber-300 drop-shadow-[0_0_15px_rgba(252,211,77,0.4)] shrink-0"
               >
-                <PentacleIcon className="w-6 h-6 md:w-7 md:h-7" />
+                <PentacleIcon className="w-8 h-8" />
               </motion.div>
-
               <div className="min-w-0">
-                <h2 className="text-lg md:text-xl font-serif italic text-white/90 tracking-wide leading-none truncate">
-                  Collective Pile Interpretation
+                <h2 className="text-xl md:text-2xl font-serif italic bg-gradient-to-r from-white via-indigo-100 to-purple-200 bg-clip-text text-transparent tracking-wide truncate">
+                  Collective Interpretation
                 </h2>
-                <p className="mt-1 text-[9px] md:text-[10px] text-purple-300/60 uppercase tracking-[0.28em] font-mono">
-                  {validCards.length} Cards Selected
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+                  <p className="text-[10px] md:text-xs text-indigo-300/70 uppercase tracking-[0.3em] font-mono">
+                    {validCards.length} Cards Resonating
+                  </p>
+                </div>
               </div>
             </div>
 
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="hidden md:flex p-2 rounded-full bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white transition-all backdrop-blur-sm border border-white/10 hover:border-white/30 active:scale-95 shrink-0"
+              className="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-indigo-200 hover:text-white transition-all backdrop-blur-md border border-white/10 hover:border-white/20 active:scale-95 shrink-0"
               aria-label="Close modal"
             >
-              <X size={17} />
+              <X size={20} />
             </button>
           </div>
 
-          {/* content */}
-          <motion.div className="relative flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 space-y-5 md:space-y-6">
+          {/* Scrollable Content */}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="relative z-10 flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8 space-y-6 md:space-y-8 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+          >
             {validCards.map((card, idx) => {
               const currentCardName = card.card_name || card.name;
               const currentMeta = card.card_metadata || {};
 
               return (
                 <motion.div
+                  variants={cardVariants}
                   key={card.card_id || card.id || idx}
-                  initial={{ opacity: 0, y: 24, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.35, ease: "easeOut" }}
-                  className="bg-white/[0.04] border border-white/10 rounded-[1.5rem] p-4 md:p-6 flex flex-col md:flex-row gap-5 md:gap-7 items-start relative overflow-hidden backdrop-blur-sm hover:border-white/20 transition-colors"
+                  className="group relative bg-white/[0.02] border border-white/5 hover:border-indigo-500/30 rounded-[2rem] p-5 md:p-8 flex flex-col lg:flex-row gap-6 md:gap-10 items-start overflow-hidden backdrop-blur-xl transition-all duration-500 hover:shadow-[0_0_40px_rgba(99,102,241,0.1)] hover:bg-white/[0.04]"
                 >
-                  <div className="absolute top-4 right-5 text-[10px] font-mono font-bold uppercase tracking-widest text-purple-400/60 bg-purple-950/40 border border-purple-500/20 px-3 py-1 rounded-full">
+                  {/* Glowing Orb Background Effect */}
+                  <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+                  {/* Card Index Badge */}
+                  <div className="absolute top-5 right-6 text-[10px] font-mono font-bold uppercase tracking-widest text-indigo-300/60 bg-indigo-950/50 border border-indigo-500/20 px-3 py-1.5 rounded-full shadow-inner z-10">
                     Card #{idx + 1}
                   </div>
 
-                  {/* image frame */}
-                  <div className="w-full md:w-56 lg:w-64 h-[320px] md:h-[420px] lg:h-[500px] shrink-0 rounded-2xl bg-black/50 border border-white/10 overflow-hidden shadow-xl self-center md:self-start">
+                  {/* Image Frame */}
+                  <div className="w-full lg:w-72 xl:w-80 h-[360px] md:h-[480px] shrink-0 rounded-2xl bg-[#030308] border border-white/10 overflow-hidden shadow-2xl relative self-center lg:self-start group-hover:border-indigo-500/40 transition-colors duration-500">
+                    <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.8)] pointer-events-none z-10" />
                     {card.image_url ? (
                       <img
                         src={card.image_url}
                         alt={currentCardName}
-                        className="w-full h-full object-contain bg-[#0b1022]"
+                        className="w-full h-full object-contain p-2"
+                        loading="lazy"
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
-                        <Sparkles size={20} className="text-purple-400 mb-2" />
-                        <span className="text-[10px] font-bold text-white/70 uppercase">
+                      <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
+                        <Sparkles size={28} className="text-indigo-400/50 mb-3" />
+                        <span className="text-xs font-bold text-indigo-200/50 uppercase tracking-widest">
                           {currentCardName}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* details */}
-                  <div className="flex-1 space-y-4 w-full">
+                  {/* Details */}
+                  <div className="flex-1 space-y-6 w-full relative z-10">
                     <div>
-                      <h3 className="text-2xl md:text-3xl font-serif italic text-white/90 mb-2 drop-shadow-sm">
+                      <h3 className="text-3xl md:text-4xl font-serif italic text-white/95 mb-4 drop-shadow-md">
                         {currentCardName}
                       </h3>
-
                       <div className="flex flex-wrap gap-2">
                         {card.card_suit && (
-                          <span className="px-3 py-1 bg-white/5 text-gray-300 rounded-full text-[9px] uppercase tracking-widest font-bold border border-white/10">
+                          <span className="px-3.5 py-1.5 bg-black/40 text-indigo-200 rounded-full text-[10px] uppercase tracking-[0.2em] font-medium border border-indigo-500/20">
                             {card.card_suit}
                           </span>
                         )}
-                        <span className="px-3 py-1 bg-white/5 text-gray-300 rounded-full text-[9px] uppercase tracking-widest font-bold border border-white/10">
+                        <span className="px-3.5 py-1.5 bg-black/40 text-purple-200 rounded-full text-[10px] uppercase tracking-[0.2em] font-medium border border-purple-500/20">
                           {currentMeta.element_zodiac || "Cosmic Element"}
                         </span>
                       </div>
                     </div>
 
-                    {/* keywords */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-xs">
-                        <span className="text-emerald-400 font-bold block text-[9px] uppercase tracking-wider mb-1">
-                          Upright Keywords
+                    {/* Keywords Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/15 shadow-[inset_0_0_20px_rgba(16,185,129,0.02)]">
+                        <span className="text-emerald-400 font-bold block text-[10px] uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                          <Sparkles size={12} /> Upright
                         </span>
-                        <span className="text-gray-300/90 leading-relaxed">
+                        <span className="text-gray-300/90 text-sm leading-relaxed">
                           {formatKeywords(currentMeta.upright_keywords)}
                         </span>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/10 text-xs">
-                        <span className="text-rose-400 font-bold block text-[9px] uppercase tracking-wider mb-1">
-                          Reversed Keywords
+                      <div className="p-4 rounded-2xl bg-rose-950/20 border border-rose-500/15 shadow-[inset_0_0_20px_rgba(244,63,94,0.02)]">
+                        <span className="text-rose-400 font-bold block text-[10px] uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                          Shadow <Sparkles size={12} />
                         </span>
-                        <span className="text-gray-300/90 leading-relaxed">
+                        <span className="text-gray-300/90 text-sm leading-relaxed">
                           {formatKeywords(currentMeta.reversed_keywords)}
                         </span>
                       </div>
                     </div>
 
-                    {/* meanings */}
-                    <div className="space-y-3 pt-2 border-t border-white/5">
+                    {/* Meanings */}
+                    <div className="space-y-5 pt-4 border-t border-white/5">
                       <div>
-                        <h4 className="text-emerald-400 text-[10px] font-bold uppercase tracking-widest mb-1 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                          Light / Upright Meaning
+                        <h4 className="text-emerald-300/80 text-[11px] font-mono uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                          <span className="w-1 h-1 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.8)]" />
+                          Radiance
                         </h4>
-                        <p className="text-gray-300 text-xs md:text-sm font-light leading-relaxed">
-                          {currentMeta.upright_meaning ||
-                            "No meaning recorded."}
+                        <p className="text-gray-300 text-sm md:text-base font-light leading-relaxed">
+                          {currentMeta.upright_meaning || "No meaning recorded."}
                         </p>
                       </div>
 
                       <div>
-                        <h4 className="text-rose-400 text-[10px] font-bold uppercase tracking-widest mb-1 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-                          Shadow / Reversed Meaning
+                        <h4 className="text-rose-300/80 text-[11px] font-mono uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                          <span className="w-1 h-1 rounded-full bg-rose-400 shadow-[0_0_5px_rgba(251,113,133,0.8)]" />
+                          Eclipse
                         </h4>
-                        <p className="text-gray-400 text-xs md:text-sm font-light italic leading-relaxed">
-                          {currentMeta.reversed_meaning ||
-                            "No meaning recorded."}
+                        <p className="text-gray-400 text-sm md:text-base font-light italic leading-relaxed">
+                          {currentMeta.reversed_meaning || "No meaning recorded."}
                         </p>
                       </div>
                     </div>
@@ -291,9 +249,6 @@ export default function PileReadingModal({ drawnCards = [] }) {
               );
             })}
           </motion.div>
-
-          {/* bottom fade */}
-          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-purple-950/20 to-transparent pointer-events-none" />
         </motion.div>
       </motion.div>
     </AnimatePresence>
@@ -306,30 +261,31 @@ export default function PileReadingModal({ drawnCards = [] }) {
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0, opacity: 0 }}
-        className="fixed bottom-8 right-8 z-40"
+        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-40"
       >
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="relative group flex items-center gap-3 px-5 py-3.5 rounded-full bg-[#0d0922]/80 backdrop-blur-xl border border-purple-500/30 text-purple-200 shadow-[0_0_30px_rgba(168,85,247,0.3)] hover:shadow-[0_0_50px_rgba(168,85,247,0.6)] hover:border-purple-400/60 transition-all duration-500"
+          className="relative group flex items-center gap-3 px-6 py-4 rounded-full bg-[#0a051a]/90 backdrop-blur-2xl border border-indigo-500/40 text-indigo-100 shadow-[0_0_30px_rgba(99,102,241,0.25)] hover:shadow-[0_0_40px_rgba(139,92,246,0.5)] hover:border-indigo-300/60 transition-all duration-500 overflow-hidden"
         >
-          <div className="absolute inset-0 rounded-full bg-purple-600/20 blur-md group-hover:blur-xl transition-all" />
+          {/* Animated button background */}
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/10 via-purple-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-            className="text-amber-300 drop-shadow-[0_0_12px_rgba(252,211,77,0.9)] relative z-10"
+            className="text-amber-200 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)] relative z-10"
           >
-            <PentacleIcon className="w-7 h-7" />
+            <PentacleIcon className="w-6 h-6 md:w-7 md:h-7" />
           </motion.div>
-          <span className="relative z-10 text-xs font-bold uppercase tracking-[0.3em] bg-gradient-to-r from-amber-200 via-purple-200 to-indigo-200 bg-clip-text text-transparent">
-            Meaning ({validCards.length})
+          <span className="relative z-10 text-[11px] md:text-xs font-bold uppercase tracking-[0.25em] bg-gradient-to-r from-white via-indigo-100 to-purple-200 bg-clip-text text-transparent">
+            Readings ({validCards.length})
           </span>
         </button>
       </motion.div>
 
-      {typeof document !== "undefined"
-        ? createPortal(modal, document.body)
-        : modal}
+      {/* Portal Render */}
+      {mounted ? createPortal(modal, document.body) : null}
     </>
   );
 }
