@@ -11,12 +11,10 @@ COPY dotNetBackend/TorootoAPI.Application/*.csproj ./dotNetBackend/TorootoAPI.Ap
 COPY dotNetBackend/TorootoAPI.Infrastucture/*.csproj ./dotNetBackend/TorootoAPI.Infrastucture/
 COPY dotNetBackend/TorootoASP/*.csproj ./dotNetBackend/TorootoASP/
 
-# Change working directory to where the .sln is located and restore
-WORKDIR /src/dotNetBackend/TorootoASP
-RUN dotnet restore TorootoASP.sln
+# Restore using the exact solution file path from /src
+RUN dotnet restore dotNetBackend/*.sln
 
-# Move back to /src root and copy full source
-WORKDIR /src
+# Copy the rest of the source code
 COPY dotNetBackend/ ./dotNetBackend/
 
 # Publish the startup project directly
