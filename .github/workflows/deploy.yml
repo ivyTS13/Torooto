@@ -45,6 +45,4 @@ jobs:
 
       - name: Verify Docker Build
         # Runs from the repository root so the Dockerfile COPY commands work
-        run: docker build -t torooto-api:test -f Dockerfile .
-
-
+        run: docker build -t torooto-api:test -f dotNetBackend/Dockerfile .
