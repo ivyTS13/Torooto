@@ -43,7 +43,7 @@ const Navbar = ({
             <Menu size={20} />
           </button>
 
-          <Link to="/" className="flex items-center space-x-3 group">
+          <Link to="/admin" className="flex items-center space-x-3 group">
             <div className="relative">
               <Sparkles
                 className="text-purple-400 animate-pulse group-hover:scale-110 transition-transform"
@@ -96,7 +96,7 @@ const Navbar = ({
 
                     <div className="p-2">
                       <DropdownItem
-                        to="/profile"
+                        to="admin/profile"
                         icon={User}
                         label="Profile"
                         onClick={toggleDropdown}

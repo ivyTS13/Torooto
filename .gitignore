@@ -36,3 +36,33 @@ desktop.ini
 .vscode/
 .idea/
 *.swp
+
+
+# ==========================================
+# .NET / C# (ASP.NET Core)
+# ==========================================
+# Build / Compilation outputs
+[Bb]in/
+[Oo]bj/
+out/
+
+# User-specific & IDE files
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.suo
+
+# Local configuration & app settings (Contains secrets/connection strings)
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.Local.json
+
+# Entity Framework Core tooling / local files
+*.db-shm
+*.db-wal

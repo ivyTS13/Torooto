@@ -1,20 +1,35 @@
 import { create } from "zustand";
 import api from "../services/api";
 
+// --- HELPER: True Fisher-Yates Shuffle ---
+// This guarantees a mathematically even distribution,
+// unlike the unstable .sort(() => Math.random() - 0.5)
+const shuffleArray = (array) => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
+
+// Set a more realistic physical reversal rate
+const REVERSAL_PROBABILITY = 0.25; // 25% chance
+
 const useDrawerStore = create((set, get) => ({
   // Deck State
-  fullDeck: [], // start empty, will be filled by fetchFullDeck
-  availableCards: [], // Cards left in the deck during manual draw
+  fullDeck: [],
+  availableCards: [],
 
   // Reading State
   numCards: 3,
   drawMode: "auto", // 'auto' | 'manual'
   allowReversed: true,
-  drawnCards: [], // Array of fixed length (numCards), containing null (empty slot) or card objects
+  drawnCards: [],
   flippedCards: {},
 
   // App Status
-  isFetchingDeck: true, // initially true because we fetch on mount
+  isFetchingDeck: true,
   isShuffling: false,
   isLoading: false,
   error: null,
@@ -24,11 +39,7 @@ const useDrawerStore = create((set, get) => ({
   fetchFullDeck: async () => {
     set({ isFetchingDeck: true, error: null });
     try {
-      // The interceptor already returns response.data.data (or response.data)
-      // So this is likely an array of cards
       const cards = await api.get("/decks/tarot-cards");
-
-      // Safety check: if cards is not an array, try to extract it
       const finalCards = Array.isArray(cards)
         ? cards
         : cards?.data || cards?.cards || [];
@@ -46,11 +57,10 @@ const useDrawerStore = create((set, get) => ({
   // 2. Settings Modifiers
   setSettings: (settings) => {
     const newNumCards = settings.numCards ?? get().numCards;
-    // When settings change, reset the board
     set({
       ...settings,
       numCards: newNumCards,
-      drawnCards: Array(Math.max(1, newNumCards)).fill(null), // Ensures no negative or 0-length arrays
+      drawnCards: Array(Math.max(1, newNumCards)).fill(null),
       flippedCards: {},
       availableCards: [],
       isSaved: false,
@@ -64,20 +74,25 @@ const useDrawerStore = create((set, get) => ({
 
     set({ isShuffling: true, flippedCards: {}, isSaved: false, error: null });
 
-    // Simulate shuffle animation duration
     setTimeout(() => {
-      let deckCopy = [...fullDeck].sort(() => Math.random() - 0.5); // Shuffle
-      const validCount = Math.min(numCards, deckCopy.length); // Prevents drawing beyond deck size
+      // Mimic human reader: Shuffle the deck thoroughly (7 passes)
+      let deckCopy = [...fullDeck];
+      for (let i = 0; i < 7; i++) {
+        deckCopy = shuffleArray(deckCopy);
+      }
+
+      const validCount = Math.min(numCards, deckCopy.length);
 
       if (drawMode === "auto") {
-        // Auto: Pick first N cards and place in slots
         const selected = deckCopy.slice(0, validCount).map((card) => ({
           ...card,
-          isReversed: allowReversed ? Math.random() > 0.5 : false,
+          // Use the more natural 25% reversal rate
+          isReversed: allowReversed
+            ? Math.random() < REVERSAL_PROBABILITY
+            : false,
         }));
         set({ drawnCards: selected, availableCards: [], isShuffling: false });
       } else {
-        // Manual: Set up empty slots and available deck pool
         set({
           drawnCards: Array(validCount).fill(null),
           availableCards: deckCopy,
@@ -87,18 +102,18 @@ const useDrawerStore = create((set, get) => ({
     }, 1500);
   },
 
-  // 4. Manual Picking (User clicks a card from the Semicircle)
+  // 4. Manual Picking
   pickManualCard: (card) => {
     const { drawnCards, availableCards, allowReversed } = get();
 
-    // Find first empty slot
     const emptySlotIndex = drawnCards.findIndex((c) => c === null);
-    if (emptySlotIndex === -1) return; // All slots full
+    if (emptySlotIndex === -1) return;
 
     const updatedDrawn = [...drawnCards];
     updatedDrawn[emptySlotIndex] = {
       ...card,
-      isReversed: allowReversed ? Math.random() > 0.5 : false,
+      // Apply the same natural reversal rate to manual picks
+      isReversed: allowReversed ? Math.random() < REVERSAL_PROBABILITY : false,
     };
 
     set({
@@ -113,13 +128,12 @@ const useDrawerStore = create((set, get) => ({
     set({ flippedCards: { ...flippedCards, [cardId]: !flippedCards[cardId] } });
   },
 
- // 6. Save to Backend
+  // 6. Save to Backend
   savePile: async () => {
     const { drawnCards } = get();
-    if (drawnCards.includes(null)) return; // Don't save incomplete piles
+    if (drawnCards.includes(null)) return;
 
-    // ADDED: Clear previous errors when initiating a new save
-    set({ isLoading: true, error: null }); 
+    set({ isLoading: true, error: null });
     try {
       const payload = {
         cards: drawnCards.map((c, i) => ({
@@ -128,13 +142,14 @@ const useDrawerStore = create((set, get) => ({
           position: i,
         })),
       };
-      await api.post("/piles/save-fe-pile", payload);
+      await api.post("/piles/save-fe-pile", payload); // Ensure route matches your .NET API
       set({ isSaved: true, isLoading: false });
     } catch (err) {
-      const message = err.response?.data?.message || err.message || "Failed to save pile.";
-      set({ error: message, isLoading: false });
+      // Simplified error handling assuming your api interceptor catches it
+      set({ error: err || "Failed to save pile.", isLoading: false });
     }
   },
+
   resetBoard: () =>
     set({
       drawnCards: Array(get().numCards).fill(null),

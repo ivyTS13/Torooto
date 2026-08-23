@@ -17,7 +17,7 @@ const ITEMS_PER_PAGE = 5;
 
 export default function PileList() {
   const navigate = useNavigate();
-  const { piles, isLoading, error, fetchPiles, deletePile } =
+  const { piles, totalPages, isLoading, error, fetchPiles, deletePile } =
     usePileHistoryStore();
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -25,23 +25,13 @@ export default function PileList() {
   const [pileToDelete, setPileToDelete] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fetch data whenever currentPage changes (server-side pagination)
   useEffect(() => {
-    fetchPiles();
-  }, [fetchPiles]);
+    fetchPiles(currentPage, ITEMS_PER_PAGE);
+  }, [fetchPiles, currentPage]);
 
-  const totalPages = Math.ceil(piles.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const currentPiles = piles.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(Math.max(1, totalPages));
-    }
-  }, [piles, totalPages, currentPage]);
-
-  const goToPage = (page) => setCurrentPage(page);
   const goPrevious = () => setCurrentPage((p) => Math.max(1, p - 1));
-  const goNext = () => setCurrentPage((p) => Math.min(totalPages, p + 1));
+  const goNext = () => setCurrentPage((p) => Math.min(totalPages || 1, p + 1));
 
   const triggerDeleteRequest = (pile) => {
     setPileToDelete(pile);
@@ -53,11 +43,20 @@ export default function PileList() {
     setIsSubmitting(true);
     const result = await deletePile(pileToDelete.pile_id);
     setIsSubmitting(false);
-    if (result.success) setIsDeleteModalOpen(false);
+
+    if (result.success) {
+      setIsDeleteModalOpen(false);
+      // If the current page becomes empty, go to previous page, otherwise refetch
+      if (piles.length === 1 && currentPage > 1) {
+        setCurrentPage((p) => p - 1);
+      } else {
+        fetchPiles(currentPage, ITEMS_PER_PAGE);
+      }
+    }
   };
 
   const handleViewPile = (pileId) => {
-    navigate(`/piles/${pileId}`);
+    navigate(`/admin/piles/${pileId}`);
   };
 
   const formatDate = (dateString) => {
@@ -86,7 +85,15 @@ export default function PileList() {
       </div>
 
       {/* Main Container */}
-      <div className="bg-black/40 border border-white/5 rounded-[2rem] overflow-hidden backdrop-blur-xl shadow-2xl">
+      <div className="relative bg-black/40 border border-white/5 rounded-[2rem] overflow-hidden backdrop-blur-xl shadow-2xl">
+        {/* Loading overlay when changing pages and we already have data */}
+        {isLoading && piles.length > 0 && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <Loader2 className="animate-spin text-purple-400" size={40} />
+          </div>
+        )}
+
+        {/* Full page loading (first load) */}
         {isLoading && piles.length === 0 ? (
           <div className="py-32 flex flex-col items-center justify-center space-y-4">
             <Loader2 className="animate-spin text-purple-500/50" size={40} />
@@ -99,7 +106,7 @@ export default function PileList() {
             <AlertCircle size={32} className="mb-4" />
             <p>{error}</p>
             <button
-              onClick={fetchPiles}
+              onClick={() => fetchPiles(currentPage, ITEMS_PER_PAGE)}
               className="mt-6 px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 rounded-lg text-sm"
             >
               Try Again
@@ -111,9 +118,9 @@ export default function PileList() {
           </div>
         ) : (
           <>
-            {/* Mobile Card View (visible below md) */}
+            {/* Mobile Card View */}
             <div className="block md:hidden space-y-4 p-4">
-              {currentPiles.map((pile) => (
+              {piles.map((pile) => (
                 <div
                   key={pile.pile_id}
                   className="bg-white/[0.03] border border-white/5 rounded-2xl p-4 flex flex-col space-y-3"
@@ -129,8 +136,8 @@ export default function PileList() {
                       </div>
                     </div>
                     <span className="px-3 py-1 bg-purple-950/30 text-purple-400 border border-purple-500/20 rounded-full text-[10px] font-bold uppercase tracking-widest">
-                      {pile.pile_contents.length} Card
-                      {pile.pile_contents.length !== 1 ? "s" : ""}
+                      {pile.pile_contents?.length || 0} Card
+                      {pile.pile_contents?.length !== 1 ? "s" : ""}
                     </span>
                   </div>
                   <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
@@ -153,7 +160,7 @@ export default function PileList() {
               ))}
             </div>
 
-            {/* Desktop Table View (hidden below md) */}
+            {/* Desktop Table View */}
             <table className="hidden md:table w-full text-left border-collapse">
               <thead className="bg-white/[0.02] text-gray-500 text-[10px] uppercase tracking-[0.2em] font-bold">
                 <tr>
@@ -164,7 +171,7 @@ export default function PileList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.03]">
-                {currentPiles.map((pile) => (
+                {piles.map((pile) => (
                   <tr
                     key={pile.pile_id}
                     className="hover:bg-white/[0.02] transition-colors group"
@@ -182,8 +189,8 @@ export default function PileList() {
                     </td>
                     <td className="px-8 py-6">
                       <span className="px-3 py-1 bg-purple-950/30 text-purple-400 border border-purple-500/20 rounded-full text-[10px] font-bold uppercase tracking-widest">
-                        {pile.pile_contents.length} Card
-                        {pile.pile_contents.length !== 1 ? "s" : ""}
+                        {pile.pile_contents?.length || 0} Card
+                        {pile.pile_contents?.length !== 1 ? "s" : ""}
                       </span>
                     </td>
                     <td className="px-8 py-6 text-right">
@@ -218,14 +225,14 @@ export default function PileList() {
                 <div className="flex gap-2">
                   <button
                     onClick={goPrevious}
-                    disabled={currentPage === 1}
+                    disabled={currentPage === 1 || isLoading}
                     className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   >
                     <ChevronLeft size={18} />
                   </button>
                   <button
                     onClick={goNext}
-                    disabled={currentPage === totalPages}
+                    disabled={currentPage === totalPages || isLoading}
                     className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   >
                     <ChevronRight size={18} />
@@ -237,7 +244,7 @@ export default function PileList() {
         )}
       </div>
 
-      {/* DELETE CONFIRMATION MODAL – responsive */}
+      {/* DELETE CONFIRMATION MODAL */}
       <AnimatePresence>
         {isDeleteModalOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-6 bg-black/90 backdrop-blur-xl">

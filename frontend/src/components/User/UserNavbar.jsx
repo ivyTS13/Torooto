@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate,useLocation  } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, LogOut, LogIn } from "lucide-react";
+import { User, LogOut, LogIn, Sparkles } from "lucide-react";
 import useAuthStore from "../../stores/authStore";
-
-export default function Navbar({ currentPath = "/" }) {
+import logoUrl from '../../assets/name.svg';
+export default function Navbar() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-
+ const location = useLocation();
+  const currentPath = location.pathname;
   const toggleDropdown = () => setDropdownOpen((prev) => !prev);
 
   const handleLogout = () => {
@@ -40,10 +41,9 @@ export default function Navbar({ currentPath = "/" }) {
     <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-4 md:px-12 md:py-6 bg-transparent">
       {/* Logo Section */}
       <Link to="/" className="flex items-center gap-2 md:gap-3 transition-opacity hover:opacity-80">
-        {/* Scaled down logo height for mobile, original for desktop */}
         <div className="h-[40px] md:h-[60px]">
           <img 
-            src="name.svg" 
+            src={logoUrl}
             alt="Logo text" 
             className="w-full h-full object-cover" 
           />
@@ -51,12 +51,12 @@ export default function Navbar({ currentPath = "/" }) {
       </Link>
 
       {/* Navigation Pill Container */}
-      <div className="flex items-center p-1 md:p-1.5 rounded-[30px] bg-black/10 backdrop-blur-xl border border-white/5 shadow-xl">
+      <div className="flex items-center p-1 md:p-1.5 rounded-[30px] bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
         <Link
           to="/"
           className={`px-3 py-1.5 md:px-5 md:py-2 rounded-[20px] text-xs md:text-sm font-medium transition-all duration-300 ${
             currentPath === "/"
-              ? "bg-black/20 text-white backdrop-blur-[7px]"
+              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-white/10 backdrop-blur-[10px] shadow-lg shadow-indigo-500/10"
               : "text-white/75 hover:text-white hover:bg-white/5"
           }`}
         >
@@ -65,12 +65,22 @@ export default function Navbar({ currentPath = "/" }) {
         <Link
           to="/tarot"
           className={`px-3 py-1.5 md:px-5 md:py-2 rounded-[20px] text-xs md:text-sm font-medium transition-all duration-300 ${
-            currentPath === "/tarot" // Fixed path check here
-              ? "bg-black/20 text-white backdrop-blur-[7px]"
+            currentPath === "/tarot"
+              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-white/10 backdrop-blur-[10px] shadow-lg shadow-indigo-500/10"
               : "text-white/75 hover:text-white hover:bg-white/5"
           }`}
         >
           Decks
+        </Link>
+        <Link
+          to="/piles"
+          className={`px-3 py-1.5 md:px-5 md:py-2 rounded-[20px] text-xs md:text-sm font-medium transition-all duration-300 ${
+            currentPath === "/piles"
+              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-white/10 backdrop-blur-[10px] shadow-lg shadow-indigo-500/10"
+              : "text-white/75 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          Piles
         </Link>
 
         {/* User Avatar Section */}
@@ -82,50 +92,61 @@ export default function Navbar({ currentPath = "/" }) {
                 className="flex items-center p-0.5 rounded-[18px] hover:bg-white/10 transition-all cursor-pointer"
               >
                 <div className="relative">
-                  {/* Scaled avatar for mobile */}
                   <img
                     src={avatarUrl}
                     alt="User Avatar"
-                    className="w-7 h-7 md:w-8 md:h-8 rounded-[14px] md:rounded-[16px] object-cover border border-white/20"
+                    className="w-7 h-7 md:w-8 md:h-8 rounded-[14px] md:rounded-[16px] object-cover border border-indigo-400/30 shadow-sm"
                   />
-                  <div className="absolute -bottom-0.5 -right-0.5 w-2 md:w-2.5 h-2 md:h-2.5 bg-emerald-500 rounded-full border-2 border-[#030014]" />
+                  <div className="absolute -bottom-0.5 -right-0.5 w-2 md:w-2.5 h-2 md:h-2.5 bg-emerald-400 rounded-full border-2 border-[#030014] shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
                 </div>
               </button>
 
               <AnimatePresence>
                 {dropdownOpen && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 12, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    // Added max-w-[90vw] so the dropdown doesn't overflow off-screen on very small phones
-                    className="absolute right-0 mt-3 w-56 md:w-60 max-w-[90vw] bg-[#0a0a16]/90 backdrop-blur-2xl rounded-[1.5rem] md:rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/10 overflow-hidden z-50"
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="absolute right-0 mt-3 w-56 md:w-64 max-w-[90vw] bg-[#070514]/85 backdrop-blur-3xl rounded-[1.75rem] md:rounded-[2rem] shadow-[0_20px_50px_rgba(10,5,30,0.8),0_0_30px_rgba(99,102,241,0.15)] border border-indigo-500/20 overflow-hidden z-50"
                   >
-                    <div className="p-4 md:p-5 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent">
+                    {/* Cosmic Background Accent Glow */}
+                    <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-600/20 rounded-full blur-2xl pointer-events-none" />
+                    <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-600/20 rounded-full blur-2xl pointer-events-none" />
+
+                    {/* User Profile Header */}
+                    <div className="relative p-4 md:p-5 border-b border-white/10 bg-gradient-to-b from-indigo-950/30 to-transparent">
+                      <div className="flex items-center gap-2 text-indigo-300 mb-1">
+                        <Sparkles size={13} className="text-indigo-400 animate-pulse" />
+                        <span className="text-[10px] uppercase tracking-widest font-semibold">Connected Aura</span>
+                      </div>
                       <p className="text-white font-serif italic text-sm md:text-base truncate">
                         {user.name || "Wayward Soul"}
                       </p>
-                      <p className="text-gray-400 text-[9px] md:text-[10px] uppercase tracking-widest mt-1 font-bold truncate">
+                      <p className="text-indigo-200/60 text-[9px] md:text-[10px] uppercase tracking-widest mt-0.5 font-medium truncate">
                         {user.email || "Hi witchhh"}
                       </p>
                     </div>
 
-                    <div className="p-2">
+                    {/* Menu Actions */}
+                    <div className="relative p-2 space-y-1">
                       <Link
                         to="/profile"
                         onClick={() => setDropdownOpen(false)}
-                        className="flex items-center space-x-3 px-3 py-2.5 md:px-4 md:py-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-xl md:rounded-2xl transition-all"
+                        className="flex items-center space-x-3 px-3 py-2.5 md:px-4 md:py-3 text-indigo-100/80 hover:text-white hover:bg-white/10 rounded-xl md:rounded-2xl transition-all group border border-transparent hover:border-white/5"
                       >
-                        <User size={16} className="md:w-[18px] md:h-[18px]" />
+                        <User size={16} className="text-indigo-400 md:w-[18px] md:h-[18px] group-hover:scale-110 transition-transform" />
                         <span className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] font-bold">
                           Profile
                         </span>
                       </Link>
-                      <div className="my-1 border-t border-white/5" />
+
+                      <div className="my-1 border-t border-white/5 mx-2" />
+
                       <button
+                       
                         onClick={handleLogout}
-                        className="w-full flex items-center space-x-3 px-3 py-2.5 md:px-4 md:py-3 text-rose-400 hover:bg-rose-500/10 rounded-xl md:rounded-2xl transition-all group"
+                        className="w-full flex items-center space-x-3 px-3 py-2.5 md:px-4 md:py-3 text-rose-300 hover:text-rose-200 hover:bg-rose-500/15 rounded-xl md:rounded-2xl transition-all group border border-transparent hover:border-rose-500/20 cursor-pointer"
                       >
                         <LogOut
                           size={16}

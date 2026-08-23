@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Loader2, Sparkles, Eye, RotateCcw } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import PageLayout from "../components/User/UserLayout";
 import SettingsPanel from "../components/SettingPanel";
@@ -9,15 +9,13 @@ import PileReadingModal from "../components/PileReadingModal";
 import useDrawerStore from "../stores/pileStore";
 
 export default function ReadingRoom() {
-  const {
-    fullDeck,
-    fetchFullDeck,
-    drawnCards,
-    isShuffling,
-    error,
-    isFetchingDeck,
-    clearDrawnCards,
-  } = useDrawerStore();
+  // ✅ OPTIMIZATION: Select only what this component needs to prevent unnecessary re-renders
+  const fullDeck = useDrawerStore((state) => state.fullDeck);
+  const fetchFullDeck = useDrawerStore((state) => state.fetchFullDeck);
+  const drawnCards = useDrawerStore((state) => state.drawnCards);
+  const isShuffling = useDrawerStore((state) => state.isShuffling);
+  const error = useDrawerStore((state) => state.error);
+  const isFetchingDeck = useDrawerStore((state) => state.isFetchingDeck);
 
   const [selectedCard, setSelectedCard] = useState(null);
 
@@ -25,7 +23,6 @@ export default function ReadingRoom() {
     if (fullDeck.length === 0) fetchFullDeck();
   }, [fullDeck.length, fetchFullDeck]);
 
-  // Derived state: all cards are picked (no null/undefined)
   const hasDrawnCards = drawnCards.length > 0;
   const isDonePicking =
     hasDrawnCards && drawnCards.every((card) => card !== null && card !== undefined);
@@ -54,7 +51,7 @@ export default function ReadingRoom() {
       )}
 
       {isShuffling && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#030014]/60 backdrop-blur-2xl transition-all duration-500">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#030014]/60 backdrop-blur-xl transition-all duration-500">
           <div className="flex flex-col items-center gap-6">
             <Loader2 className="w-10 h-10 animate-spin text-purple-400" />
             <p className="uppercase tracking-[0.4em] text-xs text-purple-200/60 font-medium">
@@ -69,11 +66,11 @@ export default function ReadingRoom() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, ease: "easeOut" }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
             className="flex flex-col items-center text-center px-6 max-w-lg z-10"
           >
             <div className="relative mb-8">
-              <div className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full scale-150" />
+              <div className="absolute inset-0 bg-purple-500/20 blur-xl rounded-full scale-150" />
               <Sparkles className="w-8 h-8 md:w-10 md:h-10 text-white/40 relative z-10" />
             </div>
             <h1 className="text-3xl md:text-5xl font-serif italic text-white mb-4 md:mb-6 tracking-tight drop-shadow-lg">
@@ -97,7 +94,6 @@ export default function ReadingRoom() {
         )}
       </div>
 
-      {/* ✅ Show Pentacle button only when picking is complete */}
       {isDonePicking && <PileReadingModal drawnCards={drawnCards} />}
 
       <AnimatePresence>

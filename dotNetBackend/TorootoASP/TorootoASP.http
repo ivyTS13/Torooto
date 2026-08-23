@@ -1,0 +1,6 @@
+@TorootoASP_HostAddress = http://localhost:5146
+
+GET {{TorootoASP_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

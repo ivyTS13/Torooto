@@ -1,10 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import axios from "axios";
-import { api } from "../services/api";
-// Base URL for your FastAPI server
+import { api } from "../services/api"; // Path to your api.js file
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 // Helper: determine zodiac sign from birthday (YYYY-MM-DD)
 const getZodiacSign = (birthday) => {
   if (!birthday) return "";
@@ -33,12 +30,11 @@ const useAuthStore = create(
       isLoading: false,
       error: null,
 
-      fetchUser: async (token) => {
+      fetchUser: async () => {
         try {
-          const response = await axios.get(`${API_URL}/users/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          set({ user: response.data });
+          // api interceptor handles the Bearer token and returns the data payload directly
+          const user = await api.get("/users/me");
+          set({ user });
         } catch (err) {
           console.error("Failed to fetch user profile", err);
         }
@@ -46,57 +42,45 @@ const useAuthStore = create(
 
       updateAvatar: async (file) => {
         set({ isLoading: true, error: null });
-        const { user, token } = get();
+        const { user } = get();
 
         try {
           const formData = new FormData();
           formData.append("file", file);
 
-          const response = await api.patch(
-            `/users/${user.id}/image`,
-            formData,
-            {
-              headers: {
-                "Content-Type": undefined,
-                Authorization: `Bearer ${token}`, // ensure token is sent
-              },
-            },
-          );
+          const response = await api.patch(`/users/${user.id}/image`, formData);
 
           set({ user: response, isLoading: false });
           return { success: true };
         } catch (err) {
           set({
-            error: err.message || "Failed to upload image",
+            error: err || "Failed to upload image",
             isLoading: false,
           });
-          console.error("Upload error:", err.response?.data); // log server response
           return { success: false };
         }
       },
+
       login: async (email, password) => {
         set({ isLoading: true, error: null });
         try {
-          const formData = new URLSearchParams();
-          formData.append("username", email);
-          formData.append("password", password);
+          // ASP.NET [FromBody] expects JSON, so we pass a standard object
+          const payload = { email, password };
+          const response = await api.post("/auth/jwt/login", payload);
 
-          const response = await axios.post(
-            `${API_URL}/auth/jwt/login`,
-            formData,
-          );
-          const token = response.data.access_token;
+          const token = response.access_token;
 
-          // 1. Save token first
+          // 1. Save token first so the api interceptor can use it
           set({ token, isLoading: false });
 
           // 2. Fetch the full user info immediately
-          await get().fetchUser(token);
+          await get().fetchUser();
 
           return true;
         } catch (err) {
+          // The interceptor simplifies the error to a string
           set({
-            error: err.response?.data?.detail || "Login failed",
+            error: err || "Login failed",
             isLoading: false,
           });
           return false;
@@ -119,26 +103,13 @@ const useAuthStore = create(
             is_verified: false,
           };
 
-          // Register expects JSON
-          await axios.post(`${API_URL}/auth/register`, payload);
+          await api.post("/auth/register", payload);
 
           // Auto-login after successful registration
           return await get().login(userData.email, userData.password);
         } catch (err) {
-          let errorMessage = "Registration failed";
-
-          // Handle specific fastapi-users errors
-          if (err.response?.data?.detail === "REGISTER_USER_ALREADY_EXISTS") {
-            errorMessage = "A user with this email already exists.";
-          } else if (err.response?.data?.detail) {
-            // Handle validation errors (usually an array in FastAPI)
-            errorMessage =
-              typeof err.response.data.detail === "string"
-                ? err.response.data.detail
-                : "Invalid data provided";
-          }
-
-          set({ error: errorMessage, isLoading: false });
+          // Use the simplified error string from the interceptor
+          set({ error: err || "Email existed", isLoading: false });
           return false;
         }
       },
@@ -148,40 +119,30 @@ const useAuthStore = create(
         if (!token) return false;
 
         try {
-          const response = await axios.get(`${API_URL}/users/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          set({ user: response.data });
+          const user = await api.get("/users/me");
+          set({ user });
           return true; // token still valid
         } catch (err) {
           await logout(); // clears user + token
           return false;
         }
       },
-
       logout: async () => {
         const { token } = get();
-        try {
-          // Tell the backend to invalidate the token
-          await axios.post(
-            `${API_URL}/auth/jwt/logout`,
-            {},
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            },
-          );
-        } catch (err) {
-          console.error("Logout error (backend):", err);
-        } finally {
-          // Always clear local state even if the network request fails
-          set({ user: null, token: null, error: null });
-          localStorage.removeItem("auth-storage");
+        if (token) {
+          try {
+            await api.post("/auth/jwt/logout");
+          } catch (err) {
+            console.error("Logout error (backend):", err);
+          }
         }
+        set({ user: null, token: null, error: null });
+        localStorage.removeItem("auth-storage");
       },
+
       updateProfile: async (profileData) => {
         set({ isLoading: true, error: null });
         try {
-          // Automatically recalculate zodiac sign before sending
           const zodiac_sign = getZodiacSign(profileData.birthday);
           const payload = {
             name: profileData.name,
@@ -189,19 +150,19 @@ const useAuthStore = create(
             zodiac_sign,
           };
 
-          // Assuming your api utility handles the /users/me route
           const response = await api.patch("/users/me", payload);
 
           set({ user: response, isLoading: false });
           return { success: true };
         } catch (err) {
           set({
-            error: err.message || "Failed to update scrolls",
+            error: err || "Failed to update profile",
             isLoading: false,
           });
           return { success: false };
         }
       },
+
       clearError: () => set({ error: null }),
     }),
     {
