@@ -1,0 +1,59 @@
+name: .NET CI/CD to Render
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  # Job 1: Standard .NET Build (Continuous Integration)
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        # Points to the folder containing your .sln file
+        working-directory: ./dotNetBackend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build application
+        run: dotnet build --no-restore --configuration Release
+
+    # Uncomment this if you add a testing project (e.g., xUnit or NUnit) later
+    # - name: Run Unit Tests
+    #   run: dotnet test --no-build --verbosity normal
+
+  # Job 2: Docker Build Verification
+  docker-verify:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Docker Build
+        # Runs from the repository root so the Dockerfile COPY commands work
+        run: docker build -t torooto-api:test -f Dockerfile .
+
+  # Job 3: Continuous Deployment
+  deploy-to-render:
+    needs: docker-verify
+    # Only triggers a real deployment if the push is on the main branch
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render Deploy Hook
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
