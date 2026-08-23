@@ -11,19 +11,18 @@ COPY dotNetBackend/TorootoAPI.Application/*.csproj ./dotNetBackend/TorootoAPI.Ap
 COPY dotNetBackend/TorootoAPI.Infrastucture/*.csproj ./dotNetBackend/TorootoAPI.Infrastucture/
 COPY dotNetBackend/TorootoASP/*.csproj ./dotNetBackend/TorootoASP/
 
-WORKDIR /src/dotNetBackend
-RUN dotnet restore
+# Restore using the solution file inside TorootoASP
+RUN dotnet restore dotNetBackend/TorootoASP/*.sln
 
-WORKDIR /src
+# Copy the rest of the source code
 COPY dotNetBackend/ ./dotNetBackend/
 
-WORKDIR /src/dotNetBackend
-RUN dotnet publish -c Release -o /app/out
+# Publish the startup project directly
+RUN dotnet publish dotNetBackend/TorootoASP/TorootoASP.csproj -c Release -o /app/out
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-
 COPY --from=build /app/out .
 
 # Render exposes PORT via environment variable
