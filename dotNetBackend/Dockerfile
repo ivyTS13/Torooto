@@ -8,7 +8,7 @@ COPY dotNetBackend/*.sln ./dotNetBackend/
 # Copy project files
 COPY dotNetBackend/TorootoAPI.Domain/*.csproj ./dotNetBackend/TorootoAPI.Domain/
 COPY dotNetBackend/TorootoAPI.Application/*.csproj ./dotNetBackend/TorootoAPI.Application/
-COPY dotNetBackend/TorootoAPI.Infrastructure/*.csproj ./dotNetBackend/TorootoAPI.Infrastructure/
+COPY dotNetBackend/TorootoAPI.Infrastucture/*.csproj ./dotNetBackend/TorootoAPI.Infrastucture/
 COPY dotNetBackend/TorootoASP/*.csproj ./dotNetBackend/TorootoASP/
 
 WORKDIR /src/dotNetBackend
