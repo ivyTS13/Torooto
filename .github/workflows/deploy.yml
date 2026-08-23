@@ -47,13 +47,4 @@ jobs:
         # Runs from the repository root so the Dockerfile COPY commands work
         run: docker build -t torooto-api:test -f Dockerfile .
 
-  # Job 3: Continuous Deployment
-  deploy-to-render:
-    needs: docker-verify
-    # Only triggers a real deployment if the push is on the main branch
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
 
-    steps:
-      - name: Trigger Render Deploy Hook
-        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
