@@ -53,7 +53,7 @@ export default function SettingsPanel() {
         )}
       </AnimatePresence>
 
-      <div className="fixed top-24 left-6 z-40">
+      <div className="absolute top-24 left-6 z-40">
         <motion.div
           layout
           initial={false}

@@ -1,16 +1,18 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate,useLocation  } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, LogOut, LogIn, Sparkles } from "lucide-react";
 import useAuthStore from "../../stores/authStore";
 import logoUrl from '../../assets/name.svg';
+
 export default function Navbar() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
- const location = useLocation();
+  const location = useLocation();
   const currentPath = location.pathname;
+  
   const toggleDropdown = () => setDropdownOpen((prev) => !prev);
 
   const handleLogout = () => {
@@ -38,10 +40,13 @@ export default function Navbar() {
     : null;
 
   return (
-    <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-4 md:px-12 md:py-6 bg-transparent">
+    // Reduced px-4 to px-2 on mobile for less space on the edges
+    <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-2 sm:px-4 py-3 md:px-12 md:py-6 bg-transparent">
+      
       {/* Logo Section */}
-      <Link to="/" className="flex items-center gap-2 md:gap-3 transition-opacity hover:opacity-80">
-        <div className="h-[40px] md:h-[60px]">
+      {/* Added shrink-0 so the logo doesn't get squished by the navigation pill */}
+      <Link to="/" className="flex items-center gap-2 md:gap-3 transition-opacity hover:opacity-80 shrink-0">
+        <div className="h-[30px] sm:h-[40px] md:h-[60px]">
           <img 
             src={logoUrl}
             alt="Logo text" 
@@ -52,9 +57,10 @@ export default function Navbar() {
 
       {/* Navigation Pill Container */}
       <div className="flex items-center p-1 md:p-1.5 rounded-[30px] bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+        {/* Added whitespace-nowrap, reduced px/py for mobile, and tweaked text size to text-[11px] */}
         <Link
           to="/"
-          className={`px-3 py-1.5 md:px-5 md:py-2 rounded-[20px] text-xs md:text-sm font-medium transition-all duration-300 ${
+          className={`whitespace-nowrap px-2.5 py-1.5 sm:px-3 sm:py-1.5 md:px-5 md:py-2 rounded-[20px] text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-300 ${
             currentPath === "/"
               ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-white/10 backdrop-blur-[10px] shadow-lg shadow-indigo-500/10"
               : "text-white/75 hover:text-white hover:bg-white/5"
@@ -64,7 +70,7 @@ export default function Navbar() {
         </Link>
         <Link
           to="/tarot"
-          className={`px-3 py-1.5 md:px-5 md:py-2 rounded-[20px] text-xs md:text-sm font-medium transition-all duration-300 ${
+          className={`whitespace-nowrap px-2.5 py-1.5 sm:px-3 sm:py-1.5 md:px-5 md:py-2 rounded-[20px] text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-300 ${
             currentPath === "/tarot"
               ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-white/10 backdrop-blur-[10px] shadow-lg shadow-indigo-500/10"
               : "text-white/75 hover:text-white hover:bg-white/5"
@@ -74,7 +80,7 @@ export default function Navbar() {
         </Link>
         <Link
           to="/piles"
-          className={`px-3 py-1.5 md:px-5 md:py-2 rounded-[20px] text-xs md:text-sm font-medium transition-all duration-300 ${
+          className={`whitespace-nowrap px-2.5 py-1.5 sm:px-3 sm:py-1.5 md:px-5 md:py-2 rounded-[20px] text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-300 ${
             currentPath === "/piles"
               ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-white/10 backdrop-blur-[10px] shadow-lg shadow-indigo-500/10"
               : "text-white/75 hover:text-white hover:bg-white/5"
@@ -84,12 +90,13 @@ export default function Navbar() {
         </Link>
 
         {/* User Avatar Section */}
-        <div className="relative ml-0.5 md:ml-1" ref={dropdownRef}>
+        {/* Added shrink-0 to prevent the avatar from compressing and becoming unclickable */}
+        <div className="relative ml-0.5 sm:ml-1 md:ml-1 shrink-0" ref={dropdownRef}>
           {user ? (
             <>
               <button
                 onClick={toggleDropdown}
-                className="flex items-center p-0.5 rounded-[18px] hover:bg-white/10 transition-all cursor-pointer"
+                className="flex items-center p-0.5 rounded-[18px] hover:bg-white/10 transition-all cursor-pointer shrink-0"
               >
                 <div className="relative">
                   <img
@@ -144,7 +151,6 @@ export default function Navbar() {
                       <div className="my-1 border-t border-white/5 mx-2" />
 
                       <button
-                       
                         onClick={handleLogout}
                         className="w-full flex items-center space-x-3 px-3 py-2.5 md:px-4 md:py-3 text-rose-300 hover:text-rose-200 hover:bg-rose-500/15 rounded-xl md:rounded-2xl transition-all group border border-transparent hover:border-rose-500/20 cursor-pointer"
                       >
@@ -164,7 +170,7 @@ export default function Navbar() {
           ) : (
             <Link
               to="/login"
-              className="px-3 py-1.5 md:px-4 md:py-2 rounded-[20px] text-xs md:text-sm font-medium text-white/75 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1 md:gap-1.5"
+              className="px-3 py-1.5 md:px-4 md:py-2 rounded-[20px] text-xs md:text-sm font-medium text-white/75 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1 md:gap-1.5 shrink-0"
             >
               <LogIn size={14} className="md:w-[15px] md:h-[15px]" />
               <span>Log In</span>

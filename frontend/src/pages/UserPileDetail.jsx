@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Loader2,
@@ -179,35 +179,68 @@ const CardDetail = ({ card, index }) => {
   );
 };
 
-/* ------------------------------------------------------------------ */
-/* Main Detail Page                                                    */
-/* ------------------------------------------------------------------ */
 export default function UserPileDetail() {
   const { pileId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Access existing piles from the store (already loaded in list)
-  const { piles } = usePileHistoryStore();
-
-  // 1. Try to get the pile from navigation state (passed from list)
-  // 2. If not (e.g., page reload), search in the existing store's piles
+  // 1. Subscribe to store state & actions
+  const {
+    piles,
+    currentPile,
+    fetchPileById,
+    isLoadingPile,
+    pileError,
+    clearCurrentPile,
+  } = usePileHistoryStore();
+// 2. Determine pile source with safe String() comparison for IDs
   const pile = useMemo(() => {
+    const safeId = String(pileId);
+    
     const fromState = location.state?.pile;
-    if (fromState && fromState.pile_id === pileId) return fromState;
+    if (fromState && (String(fromState.pile_id) === safeId || String(fromState.pileId) === safeId)) {
+      return fromState;
+    }
 
     if (piles && piles.length > 0) {
-      return piles.find((p) => p.pile_id === pileId) || null;
+      const match = piles.find(
+        (p) => String(p.pile_id) === safeId || String(p.pileId) === safeId
+      );
+      if (match) return match;
     }
-    return null;
-  }, [pileId, location.state, piles]);
 
-  const sortedCards = useMemo(() => {
-    if (!pile?.pile_contents) return [];
-    return [...pile.pile_contents].sort((a, b) => a.position - b.position);
+    if (currentPile && (String(currentPile.pile_id) === safeId || String(currentPile.pileId) === safeId)) {
+      return currentPile;
+    }
+
+    return null;
+  }, [pileId, location.state, piles, currentPile]);
+
+  // 3A. Fetch Effect: Only responsible for loading the data
+  useEffect(() => {
+    if (!pile && pileId) {
+      fetchPileById(pileId);
+    }
+    // No cleanup function here! 
+  }, [pile, pileId, fetchPileById]);
+
+  // 3B. Cleanup Effect: Only runs when the component ACTUALLY unmounts
+  useEffect(() => {
+    return () => {
+      clearCurrentPile();
+    };
+  }, [clearCurrentPile]);
+ const sortedCards = useMemo(() => {
+    // Look for either 'cards' or 'pile_contents' depending on the data source
+    const cardsArray = pile?.cards || pile?.pile_contents;
+    
+    if (!cardsArray || !Array.isArray(cardsArray)) return [];
+    
+    return [...cardsArray].sort((a, b) => a.position - b.position);
   }, [pile]);
 
   const formatDate = (dateString) => {
+    if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",
@@ -218,7 +251,22 @@ export default function UserPileDetail() {
     });
   };
 
-  if (!pile) {
+  // 4. Loading State
+  if (isLoadingPile && !pile) {
+    return (
+      <UserLayout>
+        <div className="p-4 md:p-8 max-w-6xl mx-auto text-white">
+          <div className="py-20 flex flex-col items-center justify-center text-indigo-300">
+            <Loader2 size={32} className="animate-spin mb-4" />
+            <p>Retrieving your reading...</p>
+          </div>
+        </div>
+      </UserLayout>
+    );
+  }
+
+  // 5. Error or Not Found State
+  if (!pile || pileError) {
     return (
       <UserLayout>
         <div className="p-4 md:p-8 max-w-6xl mx-auto text-white">
@@ -231,7 +279,7 @@ export default function UserPileDetail() {
           </button>
           <div className="py-20 flex flex-col items-center justify-center text-rose-300">
             <AlertCircle size={32} className="mb-4" />
-            <p>Reading not found. Please go back to your list.</p>
+            <p>{pileError || "Reading not found. Please go back to your list."}</p>
           </div>
         </div>
       </UserLayout>
@@ -241,7 +289,6 @@ export default function UserPileDetail() {
   return (
     <UserLayout>
       <div className="p-4 md:p-8 max-w-6xl mx-auto text-white">
-        {/* Back button */}
         <button
           onClick={() => navigate(-1)}
           className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
@@ -250,10 +297,9 @@ export default function UserPileDetail() {
           Back to Readings
         </button>
 
-        {/* Pile header */}
         <div className="mb-10">
           <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-200 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
-            Reading #{pile.pile_id.split("-")[0]}
+            Reading #{(pile.pile_id || pile.pileId)?.split("-")[0]}
           </h1>
           <div className="flex items-center gap-2 text-gray-400 text-sm mt-2">
             <Clock size={14} className="text-purple-400" />
@@ -261,7 +307,6 @@ export default function UserPileDetail() {
           </div>
         </div>
 
-        {/* Cards row – using static CardSlot visual */}
         <div className="mb-12">
           <h2 className="text-xl font-serif italic text-purple-100 mb-6">
             The Cards
@@ -269,7 +314,7 @@ export default function UserPileDetail() {
           <div className="flex flex-wrap gap-6 md:gap-10 justify-center md:justify-start">
             {sortedCards.map((card, idx) => (
               <StaticCardSlot
-                key={card.pile_content_id}
+                key={card.pile_content_id || idx}
                 card={card}
                 index={idx}
               />
@@ -277,13 +322,12 @@ export default function UserPileDetail() {
           </div>
         </div>
 
-        {/* Detailed interpretations */}
         <div className="space-y-8">
           <h2 className="text-xl font-serif italic text-purple-100">
             Card Interpretations
           </h2>
           {sortedCards.map((card, idx) => (
-            <CardDetail key={card.pile_content_id} card={card} index={idx} />
+            <CardDetail key={card.pile_content_id || idx} card={card} index={idx} />
           ))}
         </div>
       </div>
