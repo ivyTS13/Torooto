@@ -17,7 +17,6 @@ const Sidebar = ({ isOpen, onClose }) => {
   const publicLinks = [{ name: "The Archives", icon: Library, path: "/tarot" }];
   const userLinks = [
     { name: "Sanctum", icon: Sparkles, path: "/admin" },
-    { name: "The Archives", icon: Library, path: "admin/decks" },
     { name: "Pile History", icon: BookOpen, path: "admin/piles" },
   ];
   const adminLinks = [

@@ -41,25 +41,24 @@ namespace TorootoAPI.Infrastucture.Repositories
 
             return (piles, totalCount);
         }
+        public async Task<Pile?> GetPileByIdAsync(Guid pileId, Guid userId)
+        {
+            var pile = await _context.Piles
+                .Where(p => p.PileId == pileId && p.UserId == userId && p.IsDeleted == false)
+                .Include(p => p.PileContents
+                    .Where(pc => pc.IsDeleted == false))
+                    .ThenInclude(pc => pc.Card)
+                .FirstOrDefaultAsync();
 
-   public async Task<Pile?> GetPileByIdAsync(Guid pileId, Guid userId)
-{
-    var pile = await _context.Piles
-        .Where(p => p.PileId == pileId && p.UserId == userId && p.IsDeleted == false)
-        .Include(p => p.PileContents)
-            .ThenInclude(pc => pc.Card)
-        .FirstOrDefaultAsync();
+            if (pile != null)
+            {
+                pile.PileContents = pile.PileContents
+                    .OrderBy(pc => pc.Position)
+                    .ToList();
+            }
 
-    if (pile != null)
-    {
-        pile.PileContents = pile.PileContents
-            .Where(pc => pc.IsDeleted == false)
-            .OrderBy(pc => pc.Position)
-            .ToList();
-    }
-
-    return pile;
-}
+            return pile;
+        }
 
         public async Task<Pile> CreatePileAsync(Pile pile)
         {
