@@ -142,7 +142,7 @@ export default function UserPileList() {
                     </div>
                     <div className="flex justify-end gap-3 pt-2 border-t border-white/10">
                       <button
-                        onClick={() => handleViewPile(pile.pile_id)}
+                        onClick={() => handleViewPile(pile)}
                         className="p-2 text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-all"
                         title="View Reading"
                       >
