@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, LogOut, LogIn, Sparkles } from "lucide-react";
 import useAuthStore from "../../stores/authStore";
-import logoUrl from '../../assets/name.svg';
+import logoUrl from "../../assets/name.svg";
 
 export default function Navbar() {
   const { user, logout } = useAuthStore();
@@ -12,7 +12,7 @@ export default function Navbar() {
   const dropdownRef = useRef(null);
   const location = useLocation();
   const currentPath = location.pathname;
-  
+
   const toggleDropdown = () => setDropdownOpen((prev) => !prev);
 
   const handleLogout = () => {
@@ -35,26 +35,24 @@ export default function Navbar() {
   const avatarUrl = user
     ? user.image_url ||
       `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        user.name || "User"
+        user.name || "User",
       )}&background=6366f1&color=fff`
     : null;
 
   return (
     // Reduced px-4 to px-2 on mobile for less space on the edges
     <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-2 sm:px-4 py-3 md:px-12 md:py-6 bg-transparent">
-      
       {/* Logo Section */}
-      {/* Added shrink-0 so the logo doesn't get squished by the navigation pill */}
-      <Link to="/" className="flex items-center gap-2 md:gap-3 transition-opacity hover:opacity-80 shrink-0">
-        <div className="h-[30px] sm:h-[40px] md:h-[60px]">
-          <img 
-            src={logoUrl}
-            alt="Logo text" 
-            className="w-full h-full object-cover" 
-          />
-        </div>
+      <Link
+        to="/"
+        className="flex items-center gap-2 md:gap-3 transition-opacity hover:opacity-80 shrink-0"
+      >
+        <img
+          src={logoUrl}
+          alt="Logo text"
+          className="block h-8 w-auto max-w-[250px] sm:h-10 md:h-14 object-contain flex-shrink-0"
+        />
       </Link>
-
       {/* Navigation Pill Container */}
       <div className="flex items-center p-1 md:p-1.5 rounded-[30px] bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
         {/* Added whitespace-nowrap, reduced px/py for mobile, and tweaked text size to text-[11px] */}
@@ -91,7 +89,10 @@ export default function Navbar() {
 
         {/* User Avatar Section */}
         {/* Added shrink-0 to prevent the avatar from compressing and becoming unclickable */}
-        <div className="relative ml-0.5 sm:ml-1 md:ml-1 shrink-0" ref={dropdownRef}>
+        <div
+          className="relative ml-0.5 sm:ml-1 md:ml-1 shrink-0"
+          ref={dropdownRef}
+        >
           {user ? (
             <>
               <button
@@ -124,8 +125,13 @@ export default function Navbar() {
                     {/* User Profile Header */}
                     <div className="relative p-4 md:p-5 border-b border-white/10 bg-gradient-to-b from-indigo-950/30 to-transparent">
                       <div className="flex items-center gap-2 text-indigo-300 mb-1">
-                        <Sparkles size={13} className="text-indigo-400 animate-pulse" />
-                        <span className="text-[10px] uppercase tracking-widest font-semibold">Connected Aura</span>
+                        <Sparkles
+                          size={13}
+                          className="text-indigo-400 animate-pulse"
+                        />
+                        <span className="text-[10px] uppercase tracking-widest font-semibold">
+                          Connected Aura
+                        </span>
                       </div>
                       <p className="text-white font-serif italic text-sm md:text-base truncate">
                         {user.name || "Wayward Soul"}
@@ -142,7 +148,10 @@ export default function Navbar() {
                         onClick={() => setDropdownOpen(false)}
                         className="flex items-center space-x-3 px-3 py-2.5 md:px-4 md:py-3 text-indigo-100/80 hover:text-white hover:bg-white/10 rounded-xl md:rounded-2xl transition-all group border border-transparent hover:border-white/5"
                       >
-                        <User size={16} className="text-indigo-400 md:w-[18px] md:h-[18px] group-hover:scale-110 transition-transform" />
+                        <User
+                          size={16}
+                          className="text-indigo-400 md:w-[18px] md:h-[18px] group-hover:scale-110 transition-transform"
+                        />
                         <span className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] font-bold">
                           Profile
                         </span>
