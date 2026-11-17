@@ -1,31 +1,55 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿namespace TorootoAPI.Domain.Models;
 
-namespace TorootoAPI.Domain.Models;
-
-[Table("piles")]
-public partial class Pile
+public class Pile
 {
-    [Key]
-    [Column("pile_id")]
-    public Guid PileId { get; set; }
+    private readonly List<PileContent> _pileContents = [];
 
-    [Column("user_id")]
-    public Guid UserId { get; set; }
+    private Pile() { }
 
-    [Column("drawn_at")]
-    public DateTime? DrawnAt { get; set; }
+    public Guid PileId { get; private set; }
+    public Guid UserId { get; private set; }
+    public DateTime? DrawnAt { get; private set; }
+    public bool? IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
 
-    [Column("is_deleted")]
-    public bool? IsDeleted { get; set; }
+    public virtual IReadOnlyCollection<PileContent> PileContents => _pileContents.AsReadOnly();
+    public virtual User User { get; private set; } = null!;
 
-    [Column("deleted_at")]
-    public DateTime? DeletedAt { get; set; }
+    public static Pile Create(
+        Guid userId,
+        DateTime utcNow,
+        IEnumerable<(Guid CardId, int Position, bool ReversedCard)> drawnCards)
+    {
+        if (userId == Guid.Empty)
+            throw new ArgumentException("UserId cannot be empty.", nameof(userId));
 
-    [InverseProperty("Pile")]
-    public virtual ICollection<PileContent> PileContents { get; set; } = new List<PileContent>();
+        var items = drawnCards.ToList();
+        if (items.Count == 0)
+            throw new ArgumentException("A pile must contain at least one card.", nameof(drawnCards));
 
-    [ForeignKey("UserId")]
-    [InverseProperty("Piles")]
-    public virtual User User { get; set; } = null!;
+        if (items.Select(x => x.CardId).Distinct().Count() != items.Count)
+            throw new ArgumentException("A pile cannot contain duplicate cards.", nameof(drawnCards));
+
+        var pile = new Pile
+        {
+            PileId = Guid.NewGuid(),
+            UserId = userId,
+            DrawnAt = utcNow,
+            IsDeleted = false,
+            DeletedAt = null
+        };
+
+        foreach (var (cardId, position, reversedCard) in items.OrderBy(x => x.Position))
+        {
+            pile._pileContents.Add(PileContent.Create(pile.PileId, cardId, position, reversedCard));
+        }
+
+        return pile;
+    }
+
+    public void SoftDelete(DateTime utcNow)
+    {
+        IsDeleted = true;
+        DeletedAt = utcNow;
+    }
 }

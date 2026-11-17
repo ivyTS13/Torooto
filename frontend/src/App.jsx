@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
-import ProtectedRoute from "./components/ProtectedRoute"; // new
+import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 import NotFound from "./pages/NotFound";
 import Register from "./pages/register";
 import Profile from "./pages/Profile";
 import useAuthStore from "./stores/authStore";
-import DeckLibrary from "./pages/DeckLibrary";
-import DeckExplorer from "./pages/DeckExplorer";
 import AccessDenied from "./pages/AccessDenied";
 import ServerError from "./pages/ServerError";
 import PileDrawer from "./pages/PileDrawer";
@@ -25,31 +23,32 @@ import UserPileList from "./pages/UserPileList";
 import UserPileDetail from "./pages/UserPileDetail";
 
 const App = () => {
-  const { user, validateSession, token } = useAuthStore();
-  const [isChecking, setIsChecking] = useState(true);
+  const user = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
+  const validateSession = useAuthStore((state) => state.validateSession);
+  const [isChecking, setIsChecking] = useState(() => Boolean(token));
 
   useEffect(() => {
-    // If there's no token, we don't need to validate anything
-    if (!token) {
-      setIsChecking(false);
-      return;
-    }
+    if (!isChecking || !token) return;
 
-    // Only when a token exists do we run the validation
+    let active = true;
     const initSession = async () => {
       await validateSession();
-      setIsChecking(false);
+      if (active) setIsChecking(false);
     };
     initSession();
-  }, []);
 
-  // No token? Render immediately without a spinner
+    return () => {
+      active = false;
+    };
+  }, [isChecking, token, validateSession]);
+
   if (isChecking) {
     return (
-      <div className="night-sky min-h-screen flex items-center justify-center bg-[#050505]">
-        <Loader2 className="animate-spin text-purple-400" size={48} />
-        <p className="text-gray-500 text-sm mt-4">
-          This may require up to 1 minute...
+      <div className="tarot-canvas min-h-[100dvh] flex flex-col items-center justify-center bg-[#0B0A0E] text-[#E8E2D5]">
+        <Loader2 className="animate-spin text-[#C5A059]" size={40} strokeWidth={1.5} />
+        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#9E9689] mt-4">
+          Verifying session…
         </p>
       </div>
     );
@@ -58,14 +57,11 @@ const App = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Layout wraps everything – navbar & sidebar are always visible */}
-        {/* Public routes (accessible without login) */}
         <Route path="/" element={<ReadingRoom />} />
         <Route path="/tarot" element={<UserDeckExplorer />} />
         <Route element={<Layout />}>
-          {/* Protected routes – only visible when logged in */}
           <Route element={<ProtectedRoute adminOnly />}>
-            <Route path="/admin" element={<PileDrawer />} /> // or a dashboard
+            <Route path="/admin" element={<PileDrawer />} />
             <Route path="/admin/decks" element={<DeckManagement />} />
             <Route
               path="/admin/decks/:deckId/cards"
@@ -77,13 +73,11 @@ const App = () => {
             <Route path="/admin/profile" element={<Profile />} />
           </Route>
         </Route>
-        {/* User version*/}
         <Route element={<ProtectedRoute />}>
           <Route path="/profile" element={<UserProfilePage />} />
           <Route path="/piles" element={<UserPileList />} />
           <Route path="/piles/:pileId" element={<UserPileDetail />} />
         </Route>
-        {/* Standalone auth pages – redirect if already logged in */}
         <Route
           path="/login"
           element={!user ? <Login /> : <Navigate replace to="/" />}
@@ -92,9 +86,9 @@ const App = () => {
           path="/register"
           element={!user ? <Register /> : <Navigate replace to="/" />}
         />
-        <Route path="*" element={<NotFound />} />
         <Route path="/500" element={<ServerError />} />
         <Route path="/403" element={<AccessDenied />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

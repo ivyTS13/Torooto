@@ -1,8 +1,5 @@
-﻿
+﻿namespace TorootoAPI.Application.Auth;
 
-namespace TorootoAPI.Application.Auth;
-
-// Replaces UserRead (GET /users/me)
 public record UserReadDto(
     Guid Id,
     string Email,
@@ -15,7 +12,6 @@ public record UserReadDto(
     string? ImageUrl
 );
 
-// Replaces UserCreate (POST /auth/register)
 public record UserCreateDto(
     string Email,
     string Password,
@@ -24,7 +20,16 @@ public record UserCreateDto(
     string? ZodiacSign
 );
 
-// Replaces UserUpdate (PATCH /users/me)
+public record LoginRequestDto(
+    string Email,
+    string Password
+);
+
+public record AuthTokenResponseDto(
+    string AccessToken,
+    string TokenType
+);
+
 public record UserUpdateDto(
     string? Name,
     DateOnly? Birthday,

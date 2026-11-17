@@ -1,6 +1,8 @@
-// stores/cardStore.js
 import { create } from "zustand";
 import { api } from "../services/api";
+
+const toErrorString = (error, fallback) =>
+  typeof error === "string" ? error : error?.message || fallback;
 
 const useCardStore = create((set, get) => ({
   cards: [],
@@ -11,10 +13,10 @@ const useCardStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const cards = await api.get(`/decks/${deckId}/cards`);
-      set({ cards, isLoading: false });
+      set({ cards: Array.isArray(cards) ? cards : [], isLoading: false });
     } catch (error) {
       set({
-        error: error.message || "Failed to fetch cards",
+        error: toErrorString(error, "Failed to fetch cards"),
         isLoading: false,
       });
     }
@@ -34,15 +36,15 @@ const useCardStore = create((set, get) => ({
       return { success: true };
     } catch (error) {
       set({
-        error: error.message || "Failed to update card",
+        error: toErrorString(error, "Failed to update card"),
         isLoading: false,
       });
       return { success: false };
     }
   },
 
-  // 🖼️ Update card image (upload file)
   updateCardImage: async (cardId, file) => {
+    if (!file) return { success: false };
     set({ isLoading: true, error: null });
     try {
       const formData = new FormData();
@@ -52,11 +54,10 @@ const useCardStore = create((set, get) => ({
         `/decks/card/${cardId}/image`,
         formData,
         {
-          headers: { "Content-Type": undefined }, // ensures multipart/form-data
+          headers: { "Content-Type": undefined },
         },
       );
 
-      // Update the card in local state
       const { cards } = get();
       set({
         cards: cards.map((card) =>
@@ -67,15 +68,15 @@ const useCardStore = create((set, get) => ({
       return { success: true, data: updatedCard };
     } catch (error) {
       set({
-        error: error.message || "Failed to upload image",
+        error: toErrorString(error, "Failed to upload image"),
         isLoading: false,
       });
       return { success: false };
     }
   },
 
-  // 📤 Upload multiple cards from CSV
   uploadCards: async (deckId, file) => {
+    if (!file) return { success: false };
     set({ isLoading: true, error: null });
     try {
       const formData = new FormData();
@@ -85,8 +86,7 @@ const useCardStore = create((set, get) => ({
         headers: { "Content-Type": undefined },
       });
 
-      // result should be the array of newly created cards (backend returns { data: new_cards })
-      const newCards = result; // because interceptor extracts data
+      const newCards = Array.isArray(result) ? result : [];
       const { cards } = get();
       set({
         cards: [...cards, ...newCards],
@@ -95,7 +95,7 @@ const useCardStore = create((set, get) => ({
       return { success: true, count: newCards.length };
     } catch (error) {
       set({
-        error: error.message || "Failed to upload cards",
+        error: toErrorString(error, "Failed to upload cards"),
         isLoading: false,
       });
       return { success: false };
@@ -105,10 +105,9 @@ const useCardStore = create((set, get) => ({
   softDeleteCard: async (cardId) => {
     set({ isLoading: true, error: null });
     try {
-      await api.delete(`decks/card/${cardId}`); // We don't need the result anymore
-      
+      await api.delete(`/decks/card/${cardId}`);
+
       const { cards } = get();
-      // FIX: Filter out the deleted card entirely from the UI array
       set({
         cards: cards.filter((card) => card.card_id !== cardId),
         isLoading: false,
@@ -116,37 +115,36 @@ const useCardStore = create((set, get) => ({
       return { success: true };
     } catch (error) {
       set({
-        error: error.message || "Failed to delete card",
+        error: toErrorString(error, "Failed to delete card"),
         isLoading: false,
       });
       return { success: false };
     }
   },
-addCard: async (deckId, data) => {
+
+  addCard: async (deckId, data) => {
     set({ isLoading: true, error: null });
     try {
-      const result = await api.post(`/decks/${deckId}/cards`, data);
-      const newCard = result; // Assuming interceptor returns result.data
-      
+      const newCard = await api.post(`/decks/${deckId}/cards`, data);
       const { cards } = get();
       set({
-        // Add and then re-sort locally to match the server-side logic
         cards: [...cards, newCard].sort((a, b) => {
-           if (a.card_suit < b.card_suit) return 1;
-           if (a.card_suit > b.card_suit) return -1;
-           return a.card_position - b.card_position;
+          if (a.card_suit < b.card_suit) return 1;
+          if (a.card_suit > b.card_suit) return -1;
+          return a.card_position - b.card_position;
         }),
         isLoading: false,
       });
       return { success: true };
     } catch (error) {
       set({
-        error: error.message || "Failed to add card",
+        error: toErrorString(error, "Failed to add card"),
         isLoading: false,
       });
       return { success: false };
     }
   },
+
   clearError: () => set({ error: null }),
 }));
 

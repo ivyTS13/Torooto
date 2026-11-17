@@ -1,58 +1,48 @@
-﻿using Isopoh.Cryptography.Argon2;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TorootoAPI.Application.Interfaces;
 using TorootoAPI.Domain.Models;
 using TorootoAPI.Infrastucture.Models;
 
-namespace TorootoAPI.Infrastucture.Repositories
+namespace TorootoAPI.Infrastucture.Repositories;
+
+internal sealed class UserRepository(TorootoDBContext context) : IUserRepository
 {
-    internal class UserRepository : IUserRepository
+    public async Task<User?> GetUserByIdAsync(Guid id, CancellationToken ct = default)
     {
-        private readonly TorootoDBContext _context;
+        return await context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == id, ct);
+    }
 
-        public UserRepository(TorootoDBContext context)
-        {
-            _context = context;
-        }
+    public async Task<User?> GetUserByEmailAsync(string email, CancellationToken ct = default)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        return await context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == normalized, ct);
+    }
 
-        public async Task<User?> GetUserByIdAsync(Guid id)
-        {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-        }
+    public async Task<User> CreateUserAsync(User user, CancellationToken ct = default)
+    {
+        await context.Users.AddAsync(user, ct);
+        await context.SaveChangesAsync(ct);
+        return user;
+    }
 
-        public async Task<User?> GetUserByEmailAsync(string email)
-        {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-        }
+    public async Task<User?> UpdateUserAsync(User user, CancellationToken ct = default)
+    {
+        context.Users.Update(user);
+        await context.SaveChangesAsync(ct);
+        return user;
+    }
 
-        public async Task<User> CreateUserAsync(User user, string plainPassword)
-        {
-            user.Id = Guid.NewGuid();
-            // Assuming your User model has a HashedPassword property. Adjust if named differently.
-            user.HashedPassword = Argon2.Hash(plainPassword);
-            user.IsActive = true;
-            user.IsVerified = false;
+    public async Task<User?> UpdateUserImageAsync(Guid id, string imageUrl, CancellationToken ct = default)
+    {
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
+        if (user is null) return null;
 
-            await _context.Users.AddAsync(user);
-            await _context.SaveChangesAsync();
-            return user;
-        }
-
-        public async Task<User?> UpdateUserAsync(User user)
-        {
-            _context.Users.Update(user);
-            await _context.SaveChangesAsync();
-            return user;
-        }
-
-        public async Task<User?> UpdateUserImageAsync(Guid id, string imageUrl)
-        {
-            var user = await GetUserByIdAsync(id);
-            if (user == null) return null;
-
-            user.ImageUrl = imageUrl;
-            await _context.SaveChangesAsync();
-            return user;
-        }
+        user.UpdateImage(imageUrl);
+        await context.SaveChangesAsync(ct);
+        return user;
     }
 }

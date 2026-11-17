@@ -1,83 +1,79 @@
-﻿
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TorootoAPI.Application.Interfaces;
 using TorootoAPI.Domain.Models;
 using TorootoAPI.Infrastucture.Models;
 
-namespace TorootoAPI.Infrastucture.Repositories
+namespace TorootoAPI.Infrastucture.Repositories;
+
+public sealed class CardRepository(TorootoDBContext context) : ICardRepository
 {
-    public class CardRepository : ICardRepository
+    public async Task<Card?> GetCardByIdAsync(Guid cardId, CancellationToken ct = default)
     {
-        private readonly TorootoDBContext _context;
+        return await context.Cards
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.CardId == cardId, ct);
+    }
 
-        public CardRepository(TorootoDBContext context)
-        {
-            _context = context;
-        }
+    public async Task<Card> CreateCardAsync(Card card, CancellationToken ct = default)
+    {
+        context.Cards.Add(card);
+        await context.SaveChangesAsync(ct);
+        return card;
+    }
 
-        public async Task<Card?> GetCardByIdAsync(Guid cardId)
-        {
-            return await _context.Cards.FirstOrDefaultAsync(c => c.CardId == cardId && c.IsDeleted ==false);
-        }
+    public async Task<IEnumerable<Card>> CreateCardsBulkAsync(IEnumerable<Card> cards, CancellationToken ct = default)
+    {
+        var list = cards.ToList();
+        await context.Cards.AddRangeAsync(list, ct);
+        await context.SaveChangesAsync(ct);
+        return list;
+    }
 
-        public async Task<Card> CreateCardAsync(Card card)
-        {
-            card.CardId =  Guid.NewGuid();
-            _context.Cards.Add(card);
-            await _context.SaveChangesAsync();
-            return card;
-        }
+    public async Task<Card?> UpdateCardAsync(Card card, CancellationToken ct = default)
+    {
+        context.Cards.Update(card);
+        await context.SaveChangesAsync(ct);
+        return card;
+    }
 
-        public async Task<IEnumerable<Card>> CreateCardsBulkAsync(IEnumerable<Card> cards)
-        {
-            await _context.Cards.AddRangeAsync(cards);
-            await _context.SaveChangesAsync();
-            return cards;
-        }
+    public async Task<Card?> SoftDeleteCardAsync(Guid cardId, CancellationToken ct = default)
+    {
+        var card = await context.Cards.FirstOrDefaultAsync(c => c.CardId == cardId, ct);
+        if (card is null) return null;
 
-        public async Task<Card?> UpdateCardAsync(Card card)
-        {
-            _context.Cards.Update(card);
-            await _context.SaveChangesAsync();
-            return card;
-        }
+        card.SoftDelete(DateTime.UtcNow);
+        await context.SaveChangesAsync(ct);
+        return card;
+    }
 
-        public async Task<Card?> SoftDeleteCardAsync(Guid cardId)
-        {
-            var card = await _context.Cards.FirstOrDefaultAsync(c => c.CardId == cardId);
-            if (card == null) return null;
+    public async Task<IEnumerable<Card>> GetAllTarotCardsAsync(CancellationToken ct = default)
+    {
+        return await context.Cards
+            .AsNoTracking()
+            .Where(c => c.Deck.DeckType == "Tarot" && c.Deck.IsDeleted != true)
+            .OrderBy(c => c.CardSuit)
+            .ThenBy(c => c.CardPosition)
+            .ToListAsync(ct);
+    }
 
-            card.IsDeleted = true;
-            card.DeletedAt = DateTime.UtcNow;
+    public async Task<IEnumerable<Card>> GetCardsByDeckIdAsync(Guid deckId, CancellationToken ct = default)
+    {
+        return await context.Cards
+            .AsNoTracking()
+            .Where(c => c.DeckId == deckId && c.Deck.IsDeleted != true)
+            .OrderBy(c => c.CardSuit)
+            .ThenBy(c => c.CardPosition)
+            .ToListAsync(ct);
+    }
 
-            await _context.SaveChangesAsync();
-            return card;
-        }
+    public async Task<bool> AllCardsExistAsync(IReadOnlyCollection<Guid> cardIds, CancellationToken ct = default)
+    {
+        if (cardIds.Count == 0) return false;
 
-        public async Task<IEnumerable<Card>> GetAllTarotCardsAsync()
-        {
-           
-            var tarotDeck = await _context.Decks
-                .FirstOrDefaultAsync(d => d.DeckType == "Tarot" && d.IsDeleted==false);
+        var existingCount = await context.Cards
+            .AsNoTracking()
+            .CountAsync(c => cardIds.Contains(c.CardId), ct);
 
-            if (tarotDeck == null) return Enumerable.Empty<Card>();
-
-            return await _context.Cards
-                .Where(c => c.DeckId == tarotDeck.DeckId && c.IsDeleted !=true)
-                .ToListAsync();
-        }
-
-        public async Task<IEnumerable<Card>> GetCardsByDeckIdAsync(Guid deckId)
-        {
-            
-            var tarotDeck = await _context.Decks
-                .FirstOrDefaultAsync(d => d.DeckId == deckId && d.IsDeleted == false);
-
-            if (tarotDeck == null) return Enumerable.Empty<Card>();
-
-            return await _context.Cards
-                .Where(c => c.DeckId == tarotDeck.DeckId && c.IsDeleted != true)
-                .ToListAsync();
-        }
+        return existingCount == cardIds.Count;
     }
 }

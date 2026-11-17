@@ -1,0 +1,54 @@
+{
+  "version": 2,
+  "skills": {
+    "clean-architecture": {
+      "source": "codewithmukesh/dotnet-claude-kit",
+      "commit": "6de62a5a64c1d4e2c8b14f9c0b8cf8bb4690814d",
+      "sourceType": "github",
+      "skillPath": "skills/clean-architecture/SKILL.md",
+      "computedHash": "437a04449d9ff825fdeea7569ebc331fc394e3cb6c5d3aad5c595458ed8466dd"
+    },
+    "csharp-pro": {
+      "source": "sickn33/agentic-awesome-skills",
+      "commit": "8f1eb06978b026c5434284202c22215792c3071c",
+      "sourceType": "github",
+      "skillPath": "skills/csharp-pro/SKILL.md",
+      "computedHash": "e5a99c641ef99abb49bc5d68add3d69063c62f2d0bf742bf7cb6b0187952e83a"
+    },
+    "design-taste-frontend": {
+      "source": "sickn33/agentic-awesome-skills",
+      "commit": "8f1eb06978b026c5434284202c22215792c3071c",
+      "sourceType": "github",
+      "skillPath": "skills/design-taste-frontend/SKILL.md",
+      "computedHash": "5bae376ee5e7e5026b273aaaebd46534e4df4ba5883f6f96e938f9b068a0ac88"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "83485963700bcf11d5bf78118facb301676b69d918fee2e45a95e7f1a2840f6c"
+    },
+    "frontend-developer": {
+      "source": "sickn33/agentic-awesome-skills",
+      "commit": "8f1eb06978b026c5434284202c22215792c3071c",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-developer/SKILL.md",
+      "computedHash": "fcdd8c4a82487b2c526381aaf451f1a163d4653fefd17d704182a2ec5b2b5bc7"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "7991ed4fbecdac23f47c1a40c243e00a212a9e7f3604db93959b3ae11dffe299"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "4f68ae07187fb0d1fb78c88b503d089da4cf5a9d9625d1f2e425b1590bf96d92"
+    }
+  }
+}

@@ -31,9 +31,8 @@ jobs:
       - name: Build application
         run: dotnet build --no-restore --configuration Release
 
-    # Uncomment this if you add a testing project (e.g., xUnit or NUnit) later
-    # - name: Run Unit Tests
-    #   run: dotnet test --no-build --verbosity normal
+      - name: Run Automated Tests
+        run: dotnet test --no-build --configuration Release --verbosity normal
 
   # Job 2: Docker Build Verification
   docker-verify:

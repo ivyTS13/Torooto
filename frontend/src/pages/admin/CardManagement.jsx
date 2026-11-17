@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
   Pencil,
@@ -13,21 +13,20 @@ import {
   Image as ImageIcon,
   AlertCircle,
   CheckCircle2,
-  Sparkles,
   ChevronLeft,
   LayoutGrid,
-  Moon,
-  Sun,
   Compass,
 } from "lucide-react";
 import useCardStore from "../../stores/cardStore";
 import useDeckStore from "../../stores/deckStore";
-import { useRef } from "react";
+import { toRomanNumeral } from "../../utils/romanNumerals";
+
+const RITUAL_EASE = [0.22, 1, 0.36, 1];
 
 export default function CardManagement() {
   const { deckId } = useParams();
   const navigate = useNavigate();
-  const fileInputRef = useRef({});
+  const toastTimerRef = useRef(null);
   const {
     cards,
     isLoading,
@@ -42,7 +41,6 @@ export default function CardManagement() {
   } = useCardStore();
   const { decks, fetchDecks } = useDeckStore();
 
-  // Modals state
   const [activeModal, setActiveModal] = useState(null); // 'add' | 'edit' | 'detail' | 'delete'
   const [selectedCard, setSelectedCard] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,9 +64,30 @@ export default function CardManagement() {
     if (decks.length === 0) fetchDecks();
   }, [deckId, fetchCards, fetchDecks, decks.length]);
 
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeModal) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && !isSubmitting) {
+        setActiveModal(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeModal, isSubmitting]);
+
   const showSuccess = (msg) => {
+    if (toastTimerRef.current !== null) clearTimeout(toastTimerRef.current);
     setSuccessMessage(msg);
-    setTimeout(() => setSuccessMessage(""), 3000);
+    toastTimerRef.current = setTimeout(() => {
+      setSuccessMessage("");
+      toastTimerRef.current = null;
+    }, 3000);
   };
 
   const handleOpenForm = (mode, card = null) => {
@@ -106,7 +125,7 @@ export default function CardManagement() {
     const payload = {
       card_name: formData.card_name,
       card_suit: formData.card_suit,
-      card_position: parseInt(formData.card_position),
+      card_position: parseInt(formData.card_position, 10),
       card_metadata: {
         upright_meaning: formData.upright_meaning,
         reversed_meaning: formData.reversed_meaning,
@@ -121,7 +140,7 @@ export default function CardManagement() {
     setIsSubmitting(false);
     if (result.success) {
       setActiveModal(null);
-      showSuccess(selectedCard ? "Arcana updated" : "Card manifested");
+      showSuccess(selectedCard ? "Card updated" : "Card added");
     }
   };
 
@@ -131,7 +150,7 @@ export default function CardManagement() {
     setIsSubmitting(false);
     if (result.success) {
       setActiveModal(null);
-      showSuccess("Card vanished from deck");
+      showSuccess("Card moved to archive");
     }
   };
 
@@ -139,12 +158,7 @@ export default function CardManagement() {
     const headers = ["Card Number & Name", "suit", "image_url", "position"];
     const exampleRows = [
       ["0 The Fool", "Major Arcana", "https://example.com/fool.jpg", "0"],
-      [
-        "1 The Magician",
-        "Major Arcana",
-        "https://example.com/magician.jpg",
-        "1",
-      ],
+      ["1 The Magician", "Major Arcana", "https://example.com/magician.jpg", "1"],
     ];
     const csvContent = [headers, ...exampleRows]
       .map((row) => row.join(","))
@@ -158,277 +172,324 @@ export default function CardManagement() {
     URL.revokeObjectURL(url);
   };
 
-  // Add this helper function
   const handleImageUpload = async (cardId, file) => {
     if (!file) return;
     setIsSubmitting(true);
     const result = await updateCardImage(cardId, file);
     setIsSubmitting(false);
     if (result.success) {
-      showSuccess("Vision updated");
+      showSuccess("Card artwork updated");
     }
   };
-  return (
-    // Softer background: Deep Obsidian Slate instead of pure black
-    <div className="min-h-screen bg-[#121217] text-gray-100 p-6 lg:p-10 font-sans selection:bg-purple-500/30 relative overflow-hidden">
-      {/* Background Ambience */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/20 via-transparent to-transparent pointer-events-none" />
 
-      {/* HEADER SECTION */}
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6 relative z-10">
+  return (
+    <div className="max-w-7xl mx-auto p-2 sm:p-4 lg:p-6 text-[#E8E2D5]">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 pb-6 border-b border-[#C5A059]/20 gap-6">
         <div className="space-y-2">
           <button
+            type="button"
             onClick={() => navigate("/admin/decks")}
-            className="flex items-center gap-2 text-purple-400 text-xs font-bold uppercase tracking-widest hover:text-purple-300 transition group"
+            className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-[#9E9689] hover:text-[#C5A059] transition-colors rounded-sm px-1.5 py-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
           >
-            <ChevronLeft
-              size={14}
-              className="group-hover:-translate-x-1 transition-transform"
-            />{" "}
-            Back to Library
+            <ChevronLeft size={15} />
+            <span>Back to Decks</span>
           </button>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-gray-50 to-indigo-300 bg-clip-text text-transparent italic tracking-tight">
-            {currentDeck?.deck_name || "Manage Deck"}
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl tracking-[0.06em] text-[#E8E2D5]">
+            {currentDeck?.deck_name || "Card Registry"}
           </h1>
-          <p className="text-gray-400 text-sm tracking-wide">
-            Catalog and edit the mystical properties of your cards.
+          <p className="font-serif italic text-base text-[#9E9689]">
+            Catalog artwork, correspondence metadata, and interpretations
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full md:w-auto">
           <button
+            type="button"
             onClick={() => handleOpenForm("add")}
-            className="flex items-center gap-2 px-6 py-3 bg-white text-[#121217] rounded-2xl font-bold hover:bg-purple-100 transition shadow-lg shadow-white/5"
+            className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-sm bg-[#C5A059] hover:bg-[#D2B06B] text-[#0B0A0E] font-display text-xs font-semibold uppercase tracking-[0.18em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8E2D5]"
           >
-            <Plus size={18} /> Add Card
+            <Plus size={16} />
+            <span>Add Card</span>
           </button>
-          <label className="flex items-center gap-2 px-6 py-3 bg-purple-950/40 border border-purple-500/20 rounded-2xl cursor-pointer hover:bg-purple-900/50 transition">
-            <Upload size={18} className="text-purple-400" />
-            <span className="font-bold text-purple-100">Bulk Import</span>
+
+          <label className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-sm border border-[#C5A059]/35 bg-[#141218] hover:border-[#C5A059]/70 cursor-pointer transition-colors focus-within:ring-1 focus-within:ring-[#C5A059]">
+            <Upload size={16} className="text-[#C5A059]" />
+            <span className="font-display text-xs uppercase tracking-[0.16em] text-[#E8E2D5]">
+              Import CSV
+            </span>
             <input
               type="file"
               accept=".csv"
-              onChange={(e) => uploadCards(deckId, e.target.files[0])}
-              className="hidden"
+              aria-label="Import cards CSV file"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) uploadCards(deckId, file);
+                e.target.value = "";
+              }}
+              className="sr-only"
             />
           </label>
+
           <button
+            type="button"
             onClick={downloadExampleCsv}
-            className="p-3 bg-gray-800/60 border border-white/5 rounded-2xl hover:bg-gray-800 transition text-gray-400"
-            title="Download Example CSV"
+            aria-label="Download sample CSV template"
+            title="Download sample CSV"
+            className="p-2.5 rounded-sm border border-[#C5A059]/25 bg-[#141218] text-[#9E9689] hover:text-[#C5A059] hover:border-[#C5A059]/60 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
           >
-            <Download size={20} />
+            <Download size={18} />
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* CARDS GRID */}
-      <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 relative z-10">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5">
         <AnimatePresence>
           {cards.map((card) => (
-            <motion.div
+            <Motion.article
               layout
               key={card.card_id}
-              className="group relative aspect-[3/5] bg-gray-900/80 border border-white/5 rounded-xl overflow-hidden hover:border-purple-500/50 transition-all duration-500 shadow-xl shadow-black/20"
+              className="folio-plate group relative rounded-sm overflow-hidden hover:border-[#C5A059]/60 transition-colors duration-300 flex flex-col p-1.5"
             >
-              {/* Image container – same as DeckExplorer */}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              <div className="relative aspect-[3/5] w-full overflow-hidden rounded-[2px] border border-[#8A6D3B]/35 bg-[#0B0A0E]">
                 {card.image_url ? (
                   <img
                     src={card.image_url}
-                    alt=""
-                    className="w-full h-full object-contain transition duration-700 group-hover:scale-105"
+                    alt={card.card_name}
+                    width={300}
+                    height={500}
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover"
                   />
                 ) : (
-                  <Sparkles size={32} className="text-purple-500/20" />
+                  <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center bg-[#1C1917]">
+                    <span className="font-display text-lg text-[#C5A059]">
+                      {toRomanNumeral(card.card_position ?? 0)}
+                    </span>
+                  </div>
                 )}
               </div>
 
-              {/* Gradient overlay – softer, like DeckExplorer */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
-
-              <div className="absolute inset-0 p-5 flex flex-col justify-end">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-300 mb-1">
+              <div className="mt-1.5 border-t border-[#C5A059]/20 px-1 pt-1.5">
+                <span className="block font-mono text-[9px] uppercase tracking-[0.16em] text-[#C5A059] truncate">
                   {card.card_suit}
                 </span>
-                <h3 className="text-lg font-bold text-gray-50 mb-3 italic leading-tight">
+                <h3 className="font-serif text-sm font-medium text-[#E8E2D5] truncate">
                   {card.card_name}
                 </h3>
-
-                {/* Centered button group – same as before but without flex-1 */}
-                <div className="flex justify-center gap-2 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                  <label className="bg-white/5 backdrop-blur-md p-2.5 rounded-lg border border-white/10 hover:bg-indigo-500/30 hover:border-indigo-500/50 text-indigo-100 cursor-pointer">
-                    <ImageIcon size={16} />
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={(e) =>
-                        handleImageUpload(card.card_id, e.target.files[0])
-                      }
-                    />
-                  </label>
-                  <button
-                    onClick={() => {
-                      setSelectedCard(card);
-                      setActiveModal("detail");
-                    }}
-                    className="bg-white/5 backdrop-blur-md p-2.5 rounded-lg border border-white/10 hover:bg-white/10 hover:border-white/20"
-                  >
-                    <Eye size={16} className="text-gray-300" />
-                  </button>
-                  <button
-                    onClick={() => handleOpenForm("edit", card)}
-                    className="bg-white/5 backdrop-blur-md p-2.5 rounded-lg border border-white/10 hover:bg-purple-500/30 hover:border-purple-500/50 text-purple-100"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedCard(card);
-                      setActiveModal("delete");
-                    }}
-                    className="bg-rose-950/50 backdrop-blur-md p-2.5 rounded-lg border border-rose-500/20 hover:bg-rose-600/60 text-rose-100"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
               </div>
-            </motion.div>
+
+              <div className="mt-2 pt-1.5 border-t border-[#C5A059]/15 flex items-center justify-between gap-1 px-0.5">
+                <label
+                  title="Upload card artwork"
+                  className="flex-1 flex items-center justify-center p-1.5 rounded-sm border border-[#C5A059]/25 bg-[#1C1917] text-[#E8E2D5] hover:text-[#C5A059] hover:border-[#C5A059] cursor-pointer transition-colors focus-within:ring-1 focus-within:ring-[#C5A059]"
+                >
+                  <ImageIcon size={14} />
+                  <input
+                    type="file"
+                    className="sr-only"
+                    accept="image/*"
+                    aria-label={`Upload image for ${card.card_name}`}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(card.card_id, file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  aria-label={`View ${card.card_name}`}
+                  onClick={() => {
+                    setSelectedCard(card);
+                    setActiveModal("detail");
+                  }}
+                  className="flex-1 flex items-center justify-center p-1.5 rounded-sm border border-[#C5A059]/25 bg-[#1C1917] text-[#E8E2D5] hover:text-[#C5A059] hover:border-[#C5A059] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
+                >
+                  <Eye size={14} />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Edit ${card.card_name}`}
+                  onClick={() => handleOpenForm("edit", card)}
+                  className="flex-1 flex items-center justify-center p-1.5 rounded-sm border border-[#C5A059]/25 bg-[#1C1917] text-[#E8E2D5] hover:text-[#C5A059] hover:border-[#C5A059] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete ${card.card_name}`}
+                  onClick={() => {
+                    setSelectedCard(card);
+                    setActiveModal("delete");
+                  }}
+                  className="flex-1 flex items-center justify-center p-1.5 rounded-sm border border-[#8B3A32]/70 bg-[#5E1914]/45 text-[#E8E2D5] hover:bg-[#5E1914] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </Motion.article>
           ))}
         </AnimatePresence>
       </div>
 
-      {/* Loading state against softer bg */}
       {isLoading && cards.length === 0 && (
-        <div className="py-32 flex flex-col items-center max-w-7xl mx-auto relative z-10">
-          <Loader2 className="animate-spin text-purple-500/50" size={40} />
-          <p className="text-purple-300/30 mt-4 text-xs uppercase tracking-wider font-bold">
-            Consulting the ether...
+        <div className="py-24 flex flex-col items-center gap-3">
+          <Loader2 className="animate-spin text-[#C5A059]" size={32} strokeWidth={1.5} />
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#9E9689]">
+            Loading cards…
           </p>
         </div>
       )}
 
-      {/* TOAST SYSTEM */}
-      <div className="fixed bottom-10 right-10 z-[100] space-y-4 max-w-md w-full">
+      {/* Toast Notifications */}
+      <div
+        aria-live="polite"
+        className="fixed bottom-4 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 z-[100] space-y-3 sm:max-w-md sm:w-full"
+      >
         <AnimatePresence>
           {error && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
+            <Motion.div
+              role="alert"
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="bg-rose-950/80 border border-rose-500/30 backdrop-blur-xl p-5 rounded-2xl flex items-start gap-4 shadow-2xl shadow-black/30"
+              exit={{ opacity: 0, y: 16 }}
+              className="folio-plate rounded-sm border-[#8B3A32] bg-[#5E1914]/90 p-4 flex items-start gap-3"
             >
-              <AlertCircle className="text-rose-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle size={18} className="text-[#C9A49A] shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-bold text-rose-50">
-                  Error encountered
+                <p className="font-display text-xs uppercase tracking-[0.14em] text-[#E8E2D5]">
+                  Action Failed
                 </p>
-                <p className="text-xs text-rose-100/80 mt-1">{error}</p>
+                <p className="text-xs text-[#E8E2D5]/90 mt-1">{error}</p>
               </div>
               <button
+                type="button"
+                aria-label="Dismiss error"
                 onClick={clearError}
-                className="text-rose-300 hover:text-white"
+                className="text-[#9E9689] hover:text-[#E8E2D5] p-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
-            </motion.div>
+            </Motion.div>
           )}
           {successMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
+            <Motion.div
+              role="status"
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="bg-emerald-950/80 border border-emerald-500/30 backdrop-blur-xl p-5 rounded-2xl flex items-center gap-4 shadow-2xl shadow-black/30"
+              exit={{ opacity: 0, y: 16 }}
+              className="folio-plate rounded-sm border-[#C5A059]/60 bg-[#141218] p-4 flex items-center gap-3"
             >
-              <CheckCircle2 className="text-emerald-400 flex-shrink-0" />
-              <span className="text-sm font-semibold text-emerald-50">
+              <CheckCircle2 size={18} className="text-[#C5A059] shrink-0" />
+              <span className="font-mono text-xs uppercase tracking-[0.16em] text-[#E8E2D5]">
                 {successMessage}
               </span>
-            </motion.div>
+            </Motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* MODAL SYSTEM */}
+      {/* Modal Dialog System */}
       <AnimatePresence>
         {activeModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-8">
-            <motion.div
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 lg:p-8 overscroll-contain">
+            <Motion.div
+              aria-hidden="true"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setActiveModal(null)}
-              className="absolute inset-0 bg-[#0a0c14]/90 backdrop-blur-sm"
+              onClick={() => !isSubmitting && setActiveModal(null)}
+              className="absolute inset-0 bg-[#0B0A0E]/85"
             />
 
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            <Motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="card-modal-title"
+              initial={{ scale: 0.97, opacity: 0, y: 12 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              // Softer Dark Gray Modal: bg-[#13151f]
-              className="relative w-full max-w-5xl bg-[#13151f] border border-white/5 rounded-[3rem] shadow-[0_30px_100px_rgba(0,0,0,0.6)] overflow-hidden max-h-[90vh] flex flex-col"
+              exit={{ scale: 0.97, opacity: 0, y: 10 }}
+              transition={{ duration: 0.35, ease: RITUAL_EASE }}
+              style={{ overscrollBehavior: "contain" }}
+              className="folio-plate folio-inset relative w-full max-w-5xl rounded-sm overflow-hidden max-h-[92dvh] sm:max-h-[90dvh] flex flex-col"
             >
-              <div className="flex justify-between items-center p-8 border-b border-white/5 sticky top-0 bg-[#13151f] z-10">
-                <h2 className="text-3xl font-bold italic tracking-tight text-gray-50">
-                  {activeModal === "add" && "New Arcana"}
-                  {activeModal === "edit" &&
-                    `Refine ${selectedCard?.card_name}`}
+              <div className="flex justify-between items-center gap-3 px-4 sm:px-6 py-4 sm:py-5 border-b border-[#C5A059]/20 bg-[#1C1917]/65 sticky top-0 z-10">
+                <h2
+                  id="card-modal-title"
+                  className="font-display text-lg sm:text-2xl tracking-[0.08em] uppercase text-[#E8E2D5] truncate min-w-0"
+                >
+                  {activeModal === "add" && "New Card"}
+                  {activeModal === "edit" && `Edit · ${selectedCard?.card_name}`}
                   {activeModal === "detail" && selectedCard?.card_name}
+                  {activeModal === "delete" && "Delete Card"}
                 </h2>
                 <button
+                  type="button"
+                  aria-label="Close card dialog"
                   onClick={() => setActiveModal(null)}
-                  className="p-3 hover:bg-white/5 rounded-full transition text-gray-500 hover:text-white"
+                  className="p-2 shrink-0 rounded-sm border border-[#C5A059]/25 bg-[#141218] text-[#9E9689] hover:text-[#E8E2D5] hover:border-[#C5A059]/60 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
                 >
-                  <X />
+                  <X size={18} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-8 lg:p-12 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:p-10">
                 {activeModal === "delete" ? (
-                  <div className="py-12 text-center max-w-sm mx-auto">
-                    <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <Trash2 size={40} className="text-rose-500" />
+                  <div className="py-6 text-center max-w-sm mx-auto">
+                    <div className="w-12 h-12 rounded-sm border border-[#8B3A32] bg-[#5E1914]/35 flex items-center justify-center mx-auto mb-5">
+                      <Trash2 size={20} className="text-[#C9A49A]" />
                     </div>
-                    <h3 className="text-2xl font-bold mb-2 text-gray-50">
-                      Banish this Card?
+                    <h3 className="font-display text-xl uppercase tracking-[0.08em] mb-2 text-[#E8E2D5]">
+                      Remove Card?
                     </h3>
-                    <p className="text-gray-400 mb-8">
-                      This will move "{selectedCard?.card_name}" to your
-                      archives.
+                    <p className="font-serif text-sm text-[#9E9689] mb-7 leading-relaxed">
+                      This will soft-delete{" "}
+                      <span className="text-[#E8E2D5] font-medium">
+                        &ldquo;{selectedCard?.card_name}&rdquo;
+                      </span>{" "}
+                      from this deck.
                     </p>
-                    <div className="flex gap-4">
+                    <div className="flex gap-3">
                       <button
+                        type="button"
                         onClick={confirmDelete}
-                        className="flex-1 py-4 bg-rose-600 rounded-2xl font-bold hover:bg-rose-500 transition shadow-lg shadow-rose-900/30"
+                        disabled={isSubmitting}
+                        className="flex-1 py-2.5 rounded-sm border border-[#8B3A32] bg-[#5E1914] hover:bg-[#74211B] font-display text-xs uppercase tracking-[0.16em] text-[#E8E2D5] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
                       >
-                        Confirm Banish
+                        {isSubmitting ? "Removing…" : "Delete"}
                       </button>
                       <button
+                        type="button"
                         onClick={() => setActiveModal(null)}
-                        className="flex-1 py-4 bg-gray-800 hover:bg-gray-700 rounded-2xl transition text-gray-300"
+                        className="flex-1 py-2.5 rounded-sm border border-[#C5A059]/25 bg-[#1C1917] text-[#9E9689] hover:text-[#E8E2D5] font-display text-xs uppercase tracking-[0.16em] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
                       >
                         Cancel
                       </button>
                     </div>
                   </div>
                 ) : activeModal === "detail" ? (
-                  <div className="flex flex-col lg:flex-row gap-12">
-                  <div className="w-full lg:w-1/3 aspect-[3/5] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-950 flex items-center justify-center">
+                  <div className="flex flex-col lg:flex-row gap-6 sm:gap-8 md:gap-10">
+                    <div className="w-44 sm:w-56 lg:w-72 aspect-[3/5] shrink-0 self-center lg:self-start rounded-sm overflow-hidden border border-[#8A6D3B]/45 bg-[#0B0A0E] p-2 shadow-cast">
                       {selectedCard?.image_url ? (
                         <img
                           src={selectedCard.image_url}
-                          className="w-full h-full object-covergrayscale-[15%]"
-                          alt=""
+                          width={360}
+                          height={600}
+                          decoding="async"
+                          className="w-full h-full object-cover rounded-[2px]"
+                          alt={selectedCard.card_name}
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Sparkles className="text-white/5" size={60} />
+                        <div className="w-full h-full flex items-center justify-center bg-[#1C1917]">
+                          <span className="font-display text-2xl text-[#C5A059]">
+                            {toRomanNumeral(selectedCard?.card_position ?? 0)}
+                          </span>
                         </div>
                       )}
                     </div>
-                    <div className="flex-1 space-y-8">
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="flex-1 min-w-0 space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <DetailTag
                           label="Suit"
                           value={selectedCard?.card_suit}
@@ -436,7 +497,7 @@ export default function CardManagement() {
                         />
                         <DetailTag
                           label="Position"
-                          value={`#${selectedCard?.card_position?.toString().padStart(2, "0")}`}
+                          value={`${toRomanNumeral(selectedCard?.card_position ?? 0)} (#${selectedCard?.card_position})`}
                           icon={Compass}
                         />
                       </div>
@@ -449,17 +510,16 @@ export default function CardManagement() {
                       <MeaningBlock
                         title="Reversed Meaning"
                         text={selectedCard?.card_metadata?.reversed_meaning}
-                        keywords={
-                          selectedCard?.card_metadata?.reversed_keywords
-                        }
+                        keywords={selectedCard?.card_metadata?.reversed_keywords}
                         type="reversed"
                       />
                     </div>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-10">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <form onSubmit={handleSubmit} className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                       <InputField
+                        id="card-name-input"
                         label="Card Name"
                         value={formData.card_name}
                         onChange={(v) =>
@@ -468,6 +528,7 @@ export default function CardManagement() {
                         placeholder="The High Priestess"
                       />
                       <InputField
+                        id="card-suit-input"
                         label="Suit"
                         value={formData.card_suit}
                         onChange={(v) =>
@@ -476,6 +537,7 @@ export default function CardManagement() {
                         placeholder="Major Arcana"
                       />
                       <InputField
+                        id="card-position-input"
                         label="Position Index"
                         type="number"
                         value={formData.card_position}
@@ -486,11 +548,12 @@ export default function CardManagement() {
                       />
                     </div>
 
-                    <div className="space-y-6">
-                      <h4 className="text-purple-400 text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                        <Sun size={14} /> Upright Properties
-                      </h4>
+                    <div className="space-y-4 border-t border-[#C5A059]/20 pt-6">
+                      <h3 className="font-display text-xs uppercase tracking-[0.2em] text-[#C5A059]">
+                        Upright Interpretation
+                      </h3>
                       <InputField
+                        id="card-upright-keywords"
                         label="Upright Keywords (comma separated)"
                         value={formData.upright_keywords}
                         onChange={(v) =>
@@ -498,6 +561,7 @@ export default function CardManagement() {
                         }
                       />
                       <TextAreaField
+                        id="card-upright-meaning"
                         label="Upright Meaning"
                         value={formData.upright_meaning}
                         onChange={(v) =>
@@ -506,11 +570,12 @@ export default function CardManagement() {
                       />
                     </div>
 
-                    <div className="space-y-6">
-                      <h4 className="text-rose-400 text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                        <Moon size={14} /> Reversed Properties
-                      </h4>
+                    <div className="space-y-4 border-t border-[#5E1914]/45 pt-6">
+                      <h3 className="font-display text-xs uppercase tracking-[0.2em] text-[#C9A49A]">
+                        Reversed / Shadow Interpretation
+                      </h3>
                       <InputField
+                        id="card-reversed-keywords"
                         label="Reversed Keywords"
                         value={formData.reversed_keywords}
                         onChange={(v) =>
@@ -518,6 +583,7 @@ export default function CardManagement() {
                         }
                       />
                       <TextAreaField
+                        id="card-reversed-meaning"
                         label="Reversed Meaning"
                         value={formData.reversed_meaning}
                         onChange={(v) =>
@@ -527,6 +593,7 @@ export default function CardManagement() {
                     </div>
 
                     <InputField
+                      id="card-element-input"
                       label="Zodiac / Element"
                       value={formData.element_zodiac}
                       onChange={(v) =>
@@ -538,100 +605,111 @@ export default function CardManagement() {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-3xl font-bold text-lg hover:brightness-110 transition shadow-xl shadow-purple-500/20 text-white"
+                      className="w-full py-3.5 rounded-sm bg-[#C5A059] hover:bg-[#D2B06B] text-[#0B0A0E] font-display text-xs font-semibold uppercase tracking-[0.2em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8E2D5]"
                     >
                       {isSubmitting ? (
-                        <Loader2 className="animate-spin mx-auto" />
+                        <Loader2 className="animate-spin mx-auto" size={18} />
                       ) : selectedCard ? (
-                        "Update Card Record"
+                        "Update Card"
                       ) : (
-                        "Manifest New Card"
+                        "Add Card"
                       )}
                     </button>
                   </form>
                 )}
               </div>
-            </motion.div>
+            </Motion.div>
           </div>
         )}
       </AnimatePresence>
-
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.15); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(168, 85, 247, 0.3); }
-      `}</style>
     </div>
   );
 }
 
-/* HELPER COMPONENTS (Softened colors) */
-
-const InputField = ({ label, value, onChange, type = "text", placeholder }) => (
+const InputField = ({
+  id,
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+}) => (
   <div className="space-y-2">
-    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1">
+    <label
+      htmlFor={id}
+      className="block font-mono text-[11px] uppercase tracking-[0.16em] text-[#9E9689]"
+    >
       {label}
     </label>
-    {/* Darker input background: bg-gray-950 */}
     <input
+      id={id}
       type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       required
-      className="w-full bg-gray-950 border border-white/5 rounded-2xl px-5 py-4 focus:border-purple-500/50 outline-none transition-all placeholder:text-gray-700 text-gray-100"
+      className="w-full rounded-sm border border-[#C5A059]/25 bg-[#1C1917] px-3.5 py-2.5 text-sm text-[#E8E2D5] placeholder:text-[#9E9689]/45 focus-visible:outline-none focus-visible:border-[#C5A059] focus-visible:ring-1 focus-visible:ring-[#C5A059]/60"
     />
   </div>
 );
 
-const TextAreaField = ({ label, value, onChange }) => (
+const TextAreaField = ({ id, label, value, onChange }) => (
   <div className="space-y-2">
-    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1">
+    <label
+      htmlFor={id}
+      className="block font-mono text-[11px] uppercase tracking-[0.16em] text-[#9E9689]"
+    >
       {label}
     </label>
-    {/* Darker textarea background: bg-gray-950 */}
     <textarea
+      id={id}
       rows={3}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-gray-950 border border-white/5 rounded-2xl px-5 py-4 focus:border-purple-500/50 outline-none transition-all resize-none text-gray-200"
+      className="w-full rounded-sm border border-[#C5A059]/25 bg-[#1C1917] px-3.5 py-2.5 text-sm text-[#E8E2D5] resize-none focus-visible:outline-none focus-visible:border-[#C5A059] focus-visible:ring-1 focus-visible:ring-[#C5A059]/60"
     />
   </div>
 );
 
-const DetailTag = ({ label, value, icon: Icon }) => (
-  // Soft gray tag background: bg-gray-900
-  <div className="bg-gray-900 p-5 rounded-2xl border border-white/5 flex items-center gap-4">
-    <div className="p-2.5 bg-purple-500/10 rounded-xl text-purple-400">
-      <Icon size={18} />
+const DetailTag = ({ label, value, icon }) => {
+  const IconComponent = icon;
+  return (
+    <div className="rounded-sm border border-[#C5A059]/25 bg-[#1C1917] p-4 flex items-center gap-3.5">
+      <div className="p-2 rounded-sm border border-[#C5A059]/30 bg-[#141218] text-[#C5A059]">
+        <IconComponent size={16} />
+      </div>
+      <div>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#9E9689]">
+          {label}
+        </p>
+        <p className="font-serif text-lg text-[#E8E2D5] tabular-nums">{value}</p>
+      </div>
     </div>
-    <div>
-      <p className="text-[10px] uppercase font-bold text-gray-500 tracking-tighter">
-        {label}
-      </p>
-      <p className="text-xl font-medium text-gray-50">{value}</p>
-    </div>
-  </div>
-);
+  );
+};
 
 const MeaningBlock = ({ title, text, keywords, type }) => (
-  // Meanings use deep, slightly more saturated backgrounds (emerald-950/20, rose-950/20) against soft gray
   <div
-    className={`p-7 rounded-3xl border ${type === "upright" ? "bg-emerald-950/20 border-emerald-500/10" : "bg-rose-950/20 border-rose-500/10"}`}
+    className={`p-5 rounded-sm border ${
+      type === "upright"
+        ? "bg-[#1C1917] border-[#C5A059]/30"
+        : "bg-[#5E1914]/20 border-[#8B3A32]"
+    }`}
   >
     <h4
-      className={`text-xs font-black uppercase tracking-[0.2em] mb-5 ${type === "upright" ? "text-emerald-400" : "text-rose-400"}`}
+      className={`font-display text-xs uppercase tracking-[0.18em] mb-3 ${
+        type === "upright" ? "text-[#C5A059]" : "text-[#C9A49A]"
+      }`}
     >
       {title}
     </h4>
-    <div className="flex flex-wrap gap-2.5 mb-5">
+    <div className="flex flex-wrap gap-2 mb-4">
       {keywords?.split(",").map(
         (kw) =>
           kw.trim() && (
             <span
               key={kw}
-              className="px-3 py-1 bg-gray-800 border border-white/5 rounded-lg text-[10px] font-semibold text-gray-300 tracking-wide"
+              className="px-2.5 py-1 rounded-sm bg-[#141218] border border-[#C5A059]/20 font-mono text-[10px] text-[#E8E2D5]"
             >
               {kw.trim()}
             </span>
@@ -639,9 +717,11 @@ const MeaningBlock = ({ title, text, keywords, type }) => (
       )}
     </div>
     <p
-      className={`text-gray-200 leading-relaxed ${type === "reversed" ? "italic" : ""}`}
+      className={`font-serif text-base text-[#E8E2D5]/90 leading-relaxed max-w-[65ch] ${
+        type === "reversed" ? "italic" : ""
+      }`}
     >
-      "{text || "No description provided."}"
+      {text || "No description recorded."}
     </p>
   </div>
 );

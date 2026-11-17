@@ -3,88 +3,80 @@ using TorootoAPI.Application.Interfaces;
 using TorootoAPI.Domain.Models;
 using TorootoAPI.Infrastucture.Models;
 
-namespace TorootoAPI.Infrastucture.Repositories
+namespace TorootoAPI.Infrastucture.Repositories;
+
+public sealed class PileRepository(TorootoDBContext context) : IPileRepository
 {
-    public class PileRepository : IPileRepository
+    public async Task<IEnumerable<Pile>> GetUserPilesAsync(Guid userId, CancellationToken ct = default)
     {
-        private readonly TorootoDBContext _context;
+        return await context.Piles
+            .AsNoTracking()
+            .Where(p => p.UserId == userId)
+            .Include(p => p.PileContents.Where(pc => pc.IsDeleted != true))
+                .ThenInclude(pc => pc.Card)
+            .AsSplitQuery()
+            .OrderByDescending(p => p.DrawnAt)
+            .ToListAsync(ct);
+    }
 
-        public PileRepository(TorootoDBContext context)
-        {
-            _context = context;
-        }
+    public async Task<(IEnumerable<Pile> Piles, int TotalCount)> GetUserPilesPagedAsync(
+        Guid userId,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        var query = context.Piles
+            .AsNoTracking()
+            .Where(p => p.UserId == userId);
 
-        public async Task<IEnumerable<Pile>> GetUserPilesAsync(Guid userId)
-        {
-            return await _context.Piles
-                .Where(p => p.UserId == userId && p.IsDeleted == false)
-                .Include(p => p.PileContents)
-                    .ThenInclude(pc => pc.Card)
-                .OrderByDescending(p => p.DrawnAt)
-                .ToListAsync();
-        }
+        var totalCount = await query.CountAsync(ct);
 
-        public async Task<(IEnumerable<Pile> Piles, int TotalCount)> GetUserPilesPagedAsync(Guid userId, int page, int pageSize)
-        {
-            var query = _context.Piles
-                .Where(p => p.UserId == userId && p.IsDeleted == false);
+        var piles = await query
+            .Include(p => p.PileContents.Where(pc => pc.IsDeleted != true))
+                .ThenInclude(pc => pc.Card)
+            .AsSplitQuery()
+            .OrderByDescending(p => p.DrawnAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
 
-            var totalCount = await query.CountAsync();
+        return (piles, totalCount);
+    }
 
-            var piles = await query
-                .Include(p => p.PileContents)
-                    .ThenInclude(pc => pc.Card)
-                .OrderByDescending(p => p.DrawnAt)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+    public async Task<Pile?> GetPileByIdAsync(Guid pileId, Guid userId, CancellationToken ct = default)
+    {
+        return await context.Piles
+            .AsNoTracking()
+            .Where(p => p.PileId == pileId && p.UserId == userId)
+            .Include(p => p.PileContents.Where(pc => pc.IsDeleted != true))
+                .ThenInclude(pc => pc.Card)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(ct);
+    }
 
-            return (piles, totalCount);
-        }
-        public async Task<Pile?> GetPileByIdAsync(Guid pileId, Guid userId)
-        {
-            var pile = await _context.Piles
-                .Where(p => p.PileId == pileId && p.UserId == userId && p.IsDeleted == false)
-                .Include(p => p.PileContents
-                    .Where(pc => pc.IsDeleted == false))
-                    .ThenInclude(pc => pc.Card)
-                .FirstOrDefaultAsync();
+    public async Task<Pile> CreatePileAsync(Pile pile, CancellationToken ct = default)
+    {
+        context.Piles.Add(pile);
+        await context.SaveChangesAsync(ct);
+        return pile;
+    }
 
-            if (pile != null)
-            {
-                pile.PileContents = pile.PileContents
-                    .OrderBy(pc => pc.Position)
-                    .ToList();
-            }
+    public async Task<Pile?> SoftDeletePileAsync(Guid pileId, Guid userId, CancellationToken ct = default)
+    {
+        var pile = await context.Piles
+            .FirstOrDefaultAsync(p => p.PileId == pileId && p.UserId == userId, ct);
+        if (pile is null) return null;
 
-            return pile;
-        }
+        pile.SoftDelete(DateTime.UtcNow);
+        await context.SaveChangesAsync(ct);
+        return pile;
+    }
 
-        public async Task<Pile> CreatePileAsync(Pile pile)
-        {
-            _context.Piles.Add(pile);
-            await _context.SaveChangesAsync();
-            return pile;
-        }
-
-        public async Task<Pile?> SoftDeletePileAsync(Guid pileId)
-        {
-            var pile = await _context.Piles.FirstOrDefaultAsync(p => p.PileId == pileId);
-            if (pile == null) return null;
-
-            pile.IsDeleted = true;
-            pile.DeletedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            return pile;
-        }
-
-        public async Task<IEnumerable<Card>> GetAvailableTarotCardsAsync()
-        {
-            return await _context.Cards
-                .Include(c => c.Deck)
-                .Where(c => c.Deck!.DeckType == "Tarot" && c.Deck.IsDeleted == false && c.IsDeleted == false)
-                .ToListAsync();
-        }
+    public async Task<IEnumerable<Card>> GetAvailableTarotCardsAsync(CancellationToken ct = default)
+    {
+        return await context.Cards
+            .AsNoTracking()
+            .Where(c => c.Deck.DeckType == "Tarot" && c.Deck.IsDeleted != true)
+            .ToListAsync(ct);
     }
 }

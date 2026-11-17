@@ -1,46 +1,90 @@
-﻿
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿namespace TorootoAPI.Domain.Models;
 
-
-namespace TorootoAPI.Domain.Models;
-
-[Table("cards")]
-public partial class Card
+public class Card
 {
-    [Key]
-    [Column("card_id")]
-    public Guid CardId { get; set; }
+    private Card() { }
 
-    [Column("deck_id")]
-    public Guid DeckId { get; set; }
+    public Guid CardId { get; private set; }
+    public Guid DeckId { get; private set; }
+    public string CardName { get; private set; } = null!;
+    public string CardSuit { get; private set; } = null!;
+    public Dictionary<string, object>? CardMetadata { get; private set; }
+    public string? ImageUrl { get; private set; }
+    public bool? IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
+    public int CardPosition { get; private set; }
 
-    [Column("card_name", TypeName = "character varying")]
-    public string CardName { get; set; } = null!;
+    public virtual Deck Deck { get; private set; } = null!;
+    public virtual ICollection<PileContent> PileContents { get; private set; } = [];
 
-    [Column("card_suit", TypeName = "character varying")]
-    public string CardSuit { get; set; } = null!;
+    public static Card Create(
+        Guid deckId,
+        string cardName,
+        string cardSuit,
+        int cardPosition,
+        Dictionary<string, object>? cardMetadata = null,
+        string? imageUrl = null)
+    {
+        if (deckId == Guid.Empty)
+            throw new ArgumentException("DeckId cannot be empty.", nameof(deckId));
+        if (string.IsNullOrWhiteSpace(cardName))
+            throw new ArgumentException("CardName is required.", nameof(cardName));
+        if (string.IsNullOrWhiteSpace(cardSuit))
+            throw new ArgumentException("CardSuit is required.", nameof(cardSuit));
 
-    [Column("card_metadata", TypeName = "jsonb")]
-    public Dictionary<string, object>? CardMetadata { get; set; } = null!;
+        return new Card
+        {
+            CardId = Guid.NewGuid(),
+            DeckId = deckId,
+            CardName = cardName.Trim(),
+            CardSuit = cardSuit.Trim(),
+            CardPosition = cardPosition,
+            CardMetadata = cardMetadata ?? new Dictionary<string, object>(),
+            ImageUrl = imageUrl,
+            IsDeleted = false,
+            DeletedAt = null
+        };
+    }
 
-    [Column("image_url", TypeName = "character varying")]
-    public string? ImageUrl { get; set; }
+    public void UpdateDetails(
+        string cardName,
+        string cardSuit,
+        int? cardPosition,
+        Dictionary<string, object>? cardMetadata,
+        string? imageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(cardName))
+            throw new ArgumentException("CardName is required.", nameof(cardName));
+        if (string.IsNullOrWhiteSpace(cardSuit))
+            throw new ArgumentException("CardSuit is required.", nameof(cardSuit));
 
-    [Column("is_deleted")]
-    public bool? IsDeleted { get; set; }
+        CardName = cardName.Trim();
+        CardSuit = cardSuit.Trim();
+        if (cardPosition.HasValue)
+            CardPosition = cardPosition.Value;
+        if (cardMetadata is not null)
+            CardMetadata = cardMetadata;
+        if (imageUrl is not null)
+            ImageUrl = imageUrl;
+    }
 
-    [Column("deleted_at")]
-    public DateTime? DeletedAt { get; set; }
+    public void UpdateImage(string imageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl))
+            throw new ArgumentException("ImageUrl is required.", nameof(imageUrl));
 
-    [Column("card_position")]
-    public int CardPosition { get; set; }
+        ImageUrl = imageUrl.Trim();
+    }
 
-    [ForeignKey("DeckId")]
-    [InverseProperty("Cards")]
-    [System.Text.Json.Serialization.JsonIgnore]
-    public virtual Deck Deck { get; set; } = null!;
+    public void SoftDelete(DateTime utcNow)
+    {
+        IsDeleted = true;
+        DeletedAt = utcNow;
+    }
 
-    [InverseProperty("Card")]
-    public virtual ICollection<PileContent> PileContents { get; set; } = new List<PileContent>();
+    public void Restore()
+    {
+        IsDeleted = false;
+        DeletedAt = null;
+    }
 }
