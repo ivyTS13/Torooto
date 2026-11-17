@@ -1,33 +1,56 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿namespace TorootoAPI.Domain.Models;
 
-namespace TorootoAPI.Domain.Models;
-
-[Table("decks")]
-public partial class Deck
+public class Deck
 {
-    [Key]
-    [Column("deck_id")]
-    public Guid DeckId { get; set; }
+    private Deck() { }
 
-    [Column("deck_name", TypeName = "character varying")]
-    public string DeckName { get; set; } = null!;
+    public Guid DeckId { get; private set; }
+    public string DeckName { get; private set; } = null!;
+    public string DeckType { get; private set; } = null!;
+    public string DeckContent { get; private set; } = null!;
+    public DateTime? CreatedAt { get; private set; }
+    public bool? IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
 
-    [Column("deck_type", TypeName = "character varying")]
-    public string DeckType { get; set; } = null!;
+    public virtual ICollection<Card> Cards { get; private set; } = [];
 
-    [Column("deck_content", TypeName = "character varying")]
-    public string DeckContent { get; set; } = null!;
+    public static Deck Create(string deckName, string deckType, string deckContent, DateTime utcNow)
+    {
+        if (string.IsNullOrWhiteSpace(deckName))
+            throw new ArgumentException("DeckName is required.", nameof(deckName));
+        if (string.IsNullOrWhiteSpace(deckType))
+            throw new ArgumentException("DeckType is required.", nameof(deckType));
 
-    [Column("created_at")]
-    public DateTime? CreatedAt { get; set; }
+        return new Deck
+        {
+            DeckId = Guid.NewGuid(),
+            DeckName = deckName.Trim(),
+            DeckType = deckType.Trim(),
+            DeckContent = deckContent?.Trim() ?? string.Empty,
+            CreatedAt = utcNow,
+            IsDeleted = false,
+            DeletedAt = null
+        };
+    }
 
-    [Column("is_deleted")]
-    public bool? IsDeleted { get; set; }
+    public void Update(string deckName, string deckContent)
+    {
+        if (string.IsNullOrWhiteSpace(deckName))
+            throw new ArgumentException("DeckName is required.", nameof(deckName));
 
-    [Column("deleted_at")]
-    public DateTime? DeletedAt { get; set; }
+        DeckName = deckName.Trim();
+        DeckContent = deckContent?.Trim() ?? string.Empty;
+    }
 
-    [InverseProperty("Deck")]
-    public virtual ICollection<Card> Cards { get; set; } = new List<Card>();
+    public void SoftDelete(DateTime utcNow)
+    {
+        IsDeleted = true;
+        DeletedAt = utcNow;
+    }
+
+    public void Restore()
+    {
+        IsDeleted = false;
+        DeletedAt = null;
+    }
 }

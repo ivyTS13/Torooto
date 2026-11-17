@@ -1,148 +1,116 @@
-﻿using Mapster;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using TorootoAPI.Application.DTOs.Decks;
+using TorootoAPI.Application.DTOs.Piles;
 using TorootoAPI.Application.Interfaces;
-using TorootoAPI.Domain.Models;
+using TorootoAPI.Application.UseCases;
+using TorootoASP.Extensions;
 
-namespace TorootoASP.Controllers
+namespace TorootoASP.Controllers;
+
+[EnableRateLimiting("StandardLimit")]
+[ApiController]
+[Route("decks/")]
+public sealed class CardsController(
+    ICardService cardService,
+    ILogger<CardsController> logger) : ControllerBase
 {
-    [EnableRateLimiting("StandardLimit")]
-    [ApiController]
-    [Route("decks/")]
-    public class CardsController : ControllerBase
+    [HttpPut("card/{card_id:guid}")]
+    [Authorize(Roles = "SuperUser")]
+    public async Task<IActionResult> UpdateCard(
+        Guid card_id,
+        [FromBody] CardUpdateDto cardData,
+        CancellationToken ct)
     {
-        private readonly ICardRepository _cardRepository;
-        private readonly ILogger<CardsController> _logger;
-        private readonly IImageStorageService _imageStorageService;
-        private readonly ICacheService _cacheService;
-
-        // Injected IImageStorageService instead of the raw ImageKitClient
-        public CardsController(
-            ICardRepository cardRepository,
-            ILogger<CardsController> logger,
-            IImageStorageService imageStorageService,
-            ICacheService cacheService)
+        try
         {
-            _cardRepository = cardRepository;
-            _logger = logger;
-            _imageStorageService = imageStorageService;
-            _cacheService = cacheService;
+            var result = await cardService.UpdateCardAsync(card_id, cardData, ct);
+            return this.ToActionResult(result, "Card updated successfully");
         }
-
-        [HttpPut("card/{card_id}")]
-        [Authorize(Roles = "SuperUser")]
-        public async Task<IActionResult> UpdateCard(Guid card_id, [FromBody] CardUpdateDto cardData)
+        catch (Exception ex)
         {
-            try
-            {
-                var card = await _cardRepository.GetCardByIdAsync(card_id);
-                if (card == null) return NotFound(new { success = false, message = "Card not found" });
-
-                cardData.Adapt(card);
-
-                var updatedCard = await _cardRepository.UpdateCardAsync(card);
-                return Ok(new { success = true, data = updatedCard, message = "Card updated successfully" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error updating card {card_id}", card_id);
-                return StatusCode(500, new { success = false, message = "An error occurred while updating the card" });
-            }
+            logger.LogError(ex, "Error updating card {CardId}", card_id);
+            return StatusCode(500, new ApiResponse<object>(false, null, "An error occurred while updating the card."));
         }
+    }
 
-        [HttpPost("{deck_id}/cards")]
-        [Authorize(Roles = "SuperUser")]
-        public async Task<IActionResult> AddCard(Guid deckId, [FromBody] CardCreateDto cardData)
+    [HttpPost("{deck_id:guid}/cards")]
+    [Authorize(Roles = "SuperUser")]
+    public async Task<IActionResult> AddCard(
+        Guid deck_id,
+        [FromBody] CardCreateDto cardData,
+        CancellationToken ct)
+    {
+        try
         {
-            try
-            {
-                var newCard = cardData.Adapt<Card>();
-
-                newCard.DeckId = deckId;
-                newCard.IsDeleted = false;
-
-                var createdCard = await _cardRepository.CreateCardAsync(newCard);
-                return Ok(new { success = true, data = createdCard, message = "Card manifested successfully" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating card");
-                return StatusCode(500, new { success = false, message = "Failed to create card" });
-            }
+            var result = await cardService.AddCardAsync(deck_id, cardData, ct);
+            return this.ToActionResult(result, "Card manifested successfully");
         }
-
-        [HttpDelete("card/{card_id}")]
-        [Authorize(Roles = "SuperUser")]
-        public async Task<IActionResult> DeleteCard(Guid card_id)
+        catch (Exception ex)
         {
-            try
-            {
-                var card = await _cardRepository.SoftDeleteCardAsync(card_id);
-                if (card == null) return NotFound(new { success = false, message = "Card not found" });
-
-                return Ok(new { success = true, data = card, message = "Card moved to trash" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting card");
-                return StatusCode(500, new { success = false, message = "An unexpected error occurred while deleting the card." });
-            }
+            logger.LogError(ex, "Error creating card in deck {DeckId}", deck_id);
+            return StatusCode(500, new ApiResponse<object>(false, null, "Failed to create card."));
         }
+    }
 
-        [HttpGet("tarot-cards")]
-        public async Task<IActionResult> GetAllTarotCards()
+    [HttpDelete("card/{card_id:guid}")]
+    [Authorize(Roles = "SuperUser")]
+    public async Task<IActionResult> DeleteCard(Guid card_id, CancellationToken ct)
+    {
+        try
         {
-            try
-            {
-                var cacheKey ="tarot_deck";
-                var cachedTarot = await _cacheService.GetAsync<IEnumerable<Card>>(cacheKey);
-                if (cachedTarot != null)
-                {
-                    return Ok(new { success = true, data = cachedTarot, message = "Tarot cards retrieved successfully from cache" });
-                }
-                var cards = await _cardRepository.GetAllTarotCardsAsync();
-                if (!cards.Any()) return NotFound(new { success = false, message = "Tarot deck not found" });
-
-                await _cacheService.SetAsync(cacheKey, cards, absoluteExpireTime: TimeSpan.FromHours(2));
-                return Ok(new { success = true, data = cards, message = "Tarot cards retrieved successfully" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error fetching tarot cards");
-                return StatusCode(500, new { success = false, message = "Failed to fetch cards" });
-            }
+            var result = await cardService.SoftDeleteCardAsync(card_id, ct);
+            return this.ToActionResult(result, "Card moved to trash");
         }
-
-        [HttpPatch("card/{card_id}/image")]
-        [Authorize(Roles = "SuperUser")]
-        public async Task<IActionResult> UpdateCardImage(Guid card_id, IFormFile file)
+        catch (Exception ex)
         {
-            try
-            {
-                var card = await _cardRepository.GetCardByIdAsync(card_id);
-                if (card == null) return NotFound(new { success = false, message = "Card not found" });
+            logger.LogError(ex, "Error deleting card {CardId}", card_id);
+            return StatusCode(500, new ApiResponse<object>(false, null, "An unexpected error occurred while deleting the card."));
+        }
+    }
 
-                // Define upload arguments
-                var fileName = $"card_{card_id}_{file.FileName}";
-                var folder = "/cards";
-                var tags = new List<string> { "back-end-upload", $"deck_{card.DeckId}" };
+    [HttpGet("tarot-cards")]
+    public async Task<IActionResult> GetAllTarotCards(CancellationToken ct)
+    {
+        try
+        {
+            var result = await cardService.GetAllTarotCardsAsync(ct);
+            return this.ToActionResult(result, "Tarot cards retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching tarot cards");
+            return StatusCode(500, new ApiResponse<object>(false, null, "Failed to fetch cards."));
+        }
+    }
 
-                // Pass the stream processing down to the Storage Service
-                var imageUrl = await _imageStorageService.UploadImageAsync(file, fileName, folder, tags);
+    [HttpPatch("card/{card_id:guid}/image")]
+    [Authorize(Roles = "SuperUser")]
+    public async Task<IActionResult> UpdateCardImage(
+        Guid card_id,
+        IFormFile? file,
+        CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(new ApiResponse<object>(false, null, "Image file is required."));
 
-                // Update database
-                card.ImageUrl = imageUrl;
-                await _cardRepository.UpdateCardAsync(card);
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            var uploadRequest = new ImageUploadRequest(
+                stream,
+                $"card_{card_id}_{Path.GetFileName(file.FileName)}",
+                file.ContentType,
+                "/cards");
 
-                return Ok(new { success = true, data = card, message = "Card image updated successfully." });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to upload image");
-                return StatusCode(500, new { success = false, message = "Failed to upload image to storage provider." });
-            }
+            var result = await cardService.UpdateCardImageAsync(card_id, uploadRequest, ct);
+            return this.ToActionResult(result, "Card image updated successfully.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to upload image for card {CardId}", card_id);
+            return StatusCode(500, new ApiResponse<object>(false, null, "Failed to upload image to storage provider."));
         }
     }
 }

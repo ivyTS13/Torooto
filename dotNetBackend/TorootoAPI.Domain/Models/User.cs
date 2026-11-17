@@ -1,47 +1,63 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿namespace TorootoAPI.Domain.Models;
 
-namespace TorootoAPI.Domain.Models;
-
-[Table("users")]
-public partial class User
+public class User
 {
-    [Column("profile_image_url", TypeName = "character varying")]
-    public string? ProfileImageUrl { get; set; }
+    private User() { }
 
-    [Column("name", TypeName = "character varying")]
-    public string? Name { get; set; }
+    public Guid Id { get; private set; }
+    public string? Name { get; private set; }
+    public DateOnly? Birthday { get; private set; }
+    public string? ZodiacSign { get; private set; }
+    public string Email { get; private set; } = null!;
+    public string HashedPassword { get; private set; } = null!;
+    public bool IsActive { get; private set; }
+    public bool IsSuperuser { get; private set; }
+    public bool IsVerified { get; private set; }
+    public string? ImageUrl { get; private set; }
 
-    [Column("birthday")]
-    public DateOnly? Birthday { get; set; }
+    public virtual ICollection<Pile> Piles { get; private set; } = [];
 
-    [Column("zodiac_sign", TypeName = "character varying")]
-    public string? ZodiacSign { get; set; }
+    public static User Create(
+        string email,
+        string hashedPassword,
+        string? name,
+        DateOnly? birthday,
+        string? zodiacSign)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Email is required.", nameof(email));
+        if (string.IsNullOrWhiteSpace(hashedPassword))
+            throw new ArgumentException("HashedPassword is required.", nameof(hashedPassword));
 
-    [Key]
-    [Column("id")]
-    public Guid Id { get; set; }
+        return new User
+        {
+            Id = Guid.NewGuid(),
+            Email = email.Trim().ToLowerInvariant(),
+            HashedPassword = hashedPassword,
+            Name = name?.Trim(),
+            Birthday = birthday,
+            ZodiacSign = zodiacSign?.Trim(),
+            IsActive = true,
+            IsSuperuser = false,
+            IsVerified = false
+        };
+    }
 
-    [Column("email")]
-    [StringLength(320)]
-    public string Email { get; set; } = null!;
+    public void UpdateProfile(string? name, DateOnly? birthday, string? zodiacSign)
+    {
+        if (name is not null)
+            Name = name.Trim();
+        if (birthday.HasValue)
+            Birthday = birthday;
+        if (zodiacSign is not null)
+            ZodiacSign = zodiacSign.Trim();
+    }
 
-    [Column("hashed_password")]
-    [StringLength(1024)]
-    public string HashedPassword { get; set; } = null!;
+    public void UpdateImage(string imageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl))
+            throw new ArgumentException("ImageUrl is required.", nameof(imageUrl));
 
-    [Column("is_active")]
-    public bool IsActive { get; set; }
-
-    [Column("is_superuser")]
-    public bool IsSuperuser { get; set; }
-
-    [Column("is_verified")]
-    public bool IsVerified { get; set; }
-
-    [Column("image_url", TypeName = "character varying")]
-    public string? ImageUrl { get; set; }
-
-    [InverseProperty("User")]
-    public virtual ICollection<Pile> Piles { get; set; } = new List<Pile>();
+        ImageUrl = imageUrl.Trim();
+    }
 }

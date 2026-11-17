@@ -1,9 +1,14 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿namespace TorootoAPI.Application.Interfaces;
 
-namespace TorootoAPI.Application.Interfaces
+public sealed record ImageUploadRequest(
+    Stream Content,
+    string FileName,
+    string ContentType,
+    string Folder,
+    IReadOnlyList<string>? Tags = null
+);
+
+public interface IImageStorageService
 {
-    public interface IImageStorageService
-    {
-        Task<string> UploadImageAsync(IFormFile file, string fileName, string folder, List<string>? tags = null);
-    }
+    Task<string> UploadImageAsync(ImageUploadRequest request, CancellationToken ct = default);
 }

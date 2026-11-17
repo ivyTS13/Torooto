@@ -1,18 +1,15 @@
-﻿
+﻿using TorootoAPI.Domain.Models;
 
-using TorootoAPI.Application.DTOs.Decks;
-using TorootoAPI.Domain.Models;
+namespace TorootoAPI.Application.Interfaces;
 
-namespace TorootoAPI.Application.Interfaces
+public interface ICardRepository
 {
-    public interface ICardRepository
-    {
-        Task<Card?> GetCardByIdAsync(Guid cardId);
-        Task<Card> CreateCardAsync(Card card);
-        Task<IEnumerable<Card>> CreateCardsBulkAsync(IEnumerable<Card> cards);
-        Task<Card?> UpdateCardAsync(Card card);
-        Task<Card?> SoftDeleteCardAsync(Guid cardId);
-        Task<IEnumerable<Card>> GetAllTarotCardsAsync();
-        Task<IEnumerable<Card>> GetCardsByDeckIdAsync(Guid deckId);
-    }
+    Task<Card?> GetCardByIdAsync(Guid cardId, CancellationToken ct = default);
+    Task<Card> CreateCardAsync(Card card, CancellationToken ct = default);
+    Task<IEnumerable<Card>> CreateCardsBulkAsync(IEnumerable<Card> cards, CancellationToken ct = default);
+    Task<Card?> UpdateCardAsync(Card card, CancellationToken ct = default);
+    Task<Card?> SoftDeleteCardAsync(Guid cardId, CancellationToken ct = default);
+    Task<IEnumerable<Card>> GetAllTarotCardsAsync(CancellationToken ct = default);
+    Task<IEnumerable<Card>> GetCardsByDeckIdAsync(Guid deckId, CancellationToken ct = default);
+    Task<bool> AllCardsExistAsync(IReadOnlyCollection<Guid> cardIds, CancellationToken ct = default);
 }

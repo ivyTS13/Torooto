@@ -1,6 +1,4 @@
-﻿
-
-namespace TorootoAPI.Application.DTOs.Decks;
+﻿namespace TorootoAPI.Application.DTOs.Decks;
 
 public record DeckCreateDto(
     string DeckName,
@@ -13,6 +11,16 @@ public record DeckUpdateDto(
     string DeckContent
 );
 
+public record DeckResponseDto(
+    Guid DeckId,
+    string DeckName,
+    string DeckType,
+    string DeckContent,
+    DateTime? CreatedAt,
+    bool? IsDeleted,
+    DateTime? DeletedAt
+);
+
 public record CardCreateDto(
     string CardName,
     string CardSuit,
@@ -23,17 +31,19 @@ public record CardCreateDto(
 public record CardUpdateDto(
     string CardName,
     string CardSuit,
+    int? CardPosition,
     Dictionary<string, object>? CardMetadata,
     string? ImageUrl
 );
 
-public record CardCsvRowDto(
-    string NameAndNumber,
-    string Suit,
+public record CardResponseDto(
+    Guid CardId,
+    Guid DeckId,
+    string CardName,
+    string CardSuit,
+    Dictionary<string, object>? CardMetadata,
     string? ImageUrl,
-    Dictionary<string, object>? Metadata
-);
-
-public record ImageUpdateDto(
-    string ImageUrl
+    bool? IsDeleted,
+    DateTime? DeletedAt,
+    int CardPosition
 );

@@ -1,11 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { api } from "../services/api"; // Path to your api.js file
+import { api } from "../services/api";
 
-// Helper: determine zodiac sign from birthday (YYYY-MM-DD)
 const getZodiacSign = (birthday) => {
   if (!birthday) return "";
-  const [year, month, day] = birthday.split("-").map(Number);
+  const [, month, day] = birthday.split("-").map(Number);
   const monthDay = month * 100 + day;
 
   if (monthDay >= 321 && monthDay <= 419) return "Aries";
@@ -22,6 +21,9 @@ const getZodiacSign = (birthday) => {
   return "Pisces";
 };
 
+const toErrorString = (err, fallback) =>
+  typeof err === "string" ? err : err?.message || fallback;
+
 const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -32,11 +34,10 @@ const useAuthStore = create(
 
       fetchUser: async () => {
         try {
-          // api interceptor handles the Bearer token and returns the data payload directly
           const user = await api.get("/users/me");
           set({ user });
         } catch (err) {
-          console.error("Failed to fetch user profile", err);
+          set({ error: toErrorString(err, "Failed to fetch user profile") });
         }
       },
 
@@ -54,7 +55,7 @@ const useAuthStore = create(
           return { success: true };
         } catch (err) {
           set({
-            error: err || "Failed to upload image",
+            error: toErrorString(err, "Failed to upload image"),
             isLoading: false,
           });
           return { success: false };
@@ -64,23 +65,16 @@ const useAuthStore = create(
       login: async (email, password) => {
         set({ isLoading: true, error: null });
         try {
-          // ASP.NET [FromBody] expects JSON, so we pass a standard object
-          const payload = { email, password };
-          const response = await api.post("/auth/jwt/login", payload);
-
+          const response = await api.post("/auth/jwt/login", { email, password });
           const token = response.access_token;
 
-          // 1. Save token first so the api interceptor can use it
           set({ token, isLoading: false });
-
-          // 2. Fetch the full user info immediately
           await get().fetchUser();
 
           return true;
         } catch (err) {
-          // The interceptor simplifies the error to a string
           set({
-            error: err || "Login failed",
+            error: toErrorString(err, "Login failed"),
             isLoading: false,
           });
           return false;
@@ -91,25 +85,21 @@ const useAuthStore = create(
         set({ isLoading: true, error: null });
         try {
           const zodiac_sign = getZodiacSign(userData.birthday);
-
           const payload = {
             email: userData.email,
             password: userData.password,
             name: userData.name,
             birthday: userData.birthday,
-            zodiac_sign: zodiac_sign,
-            is_active: true,
-            is_superuser: false,
-            is_verified: false,
+            zodiac_sign,
           };
 
           await api.post("/auth/register", payload);
-
-          // Auto-login after successful registration
           return await get().login(userData.email, userData.password);
         } catch (err) {
-          // Use the simplified error string from the interceptor
-          set({ error: err || "Email existed", isLoading: false });
+          set({
+            error: toErrorString(err, "Registration failed"),
+            isLoading: false,
+          });
           return false;
         }
       },
@@ -121,19 +111,20 @@ const useAuthStore = create(
         try {
           const user = await api.get("/users/me");
           set({ user });
-          return true; // token still valid
-        } catch (err) {
-          await logout(); // clears user + token
+          return true;
+        } catch {
+          await logout();
           return false;
         }
       },
+
       logout: async () => {
         const { token } = get();
         if (token) {
           try {
             await api.post("/auth/jwt/logout");
-          } catch (err) {
-            console.error("Logout error (backend):", err);
+          } catch {
+            // Clear local session even if token has already expired
           }
         }
         set({ user: null, token: null, error: null });
@@ -156,7 +147,7 @@ const useAuthStore = create(
           return { success: true };
         } catch (err) {
           set({
-            error: err || "Failed to update profile",
+            error: toErrorString(err, "Failed to update profile"),
             isLoading: false,
           });
           return { success: false };
@@ -167,7 +158,6 @@ const useAuthStore = create(
     }),
     {
       name: "auth-storage",
-      getStorage: () => localStorage,
       partialize: (state) => ({ user: state.user, token: state.token }),
     },
   ),

@@ -1,106 +1,150 @@
-﻿
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TorootoAPI.Application.Interfaces;
 using TorootoAPI.Domain.Models;
 using TorootoAPI.Infrastucture.Models;
 
-namespace TorootoAPI.Infrastucture.Repositories
+namespace TorootoAPI.Infrastucture.Repositories;
+
+public sealed class DeckRepository(TorootoDBContext context) : IDeckRepository
 {
-    public class DeckRepository : IDeckRepository
+    public async Task<IEnumerable<Deck>> GetAllDecksAsync(CancellationToken ct = default)
     {
-        private readonly TorootoDBContext _context;
-
-        public DeckRepository(TorootoDBContext context)
-        {
-            _context = context;
-        }
-
-        public async Task<IEnumerable<Deck>> GetAllDecksAsync()
-        {
-            return await _context.Decks
-                .Where(d => d.IsDeleted == false)
-                .OrderByDescending(d => d.CreatedAt)
-                .ToListAsync();
-        }
-
-        public async Task<Deck?> GetDeckByIdAsync(Guid deckId)
-        {
-            return await _context.Decks
-                .FirstOrDefaultAsync(d => d.DeckId == deckId && d.IsDeleted == false);
-        }
-
-        public async Task<Deck> CreateDeckAsync(Deck deck)
-        {
-            deck.DeckId = Guid.NewGuid();
-            deck.CreatedAt = DateTime.UtcNow;
-            deck.IsDeleted = false;
-
-            await _context.Decks.AddAsync(deck);
-            await _context.SaveChangesAsync();
-            return deck;
-        }
-
-        public async Task<Deck?> UpdateDeckAsync(Deck deck)
-        {
-            _context.Decks.Update(deck);
-            await _context.SaveChangesAsync();
-            return deck;
-        }
-
-       public async Task<Deck?> SoftDeleteDeckAsync(Guid deckId)
-{
-    var deck = await _context.Decks.FindAsync(deckId);
-    if (deck == null) return null;
-
-    var now = DateTime.UtcNow;
-    deck.IsDeleted = true;
-    deck.DeletedAt = now;
-
-    // Cascade soft delete to associated cards
-    var cards = await _context.Cards
-        .Where(c => c.DeckId == deckId)
-        .ToListAsync();
-
-    foreach (var card in cards)
-    {
-        card.IsDeleted = true;
-        card.DeletedAt = now;
+        return await context.Decks
+            .AsNoTracking()
+            .OrderByDescending(d => d.CreatedAt)
+            .ToListAsync(ct);
     }
 
-    // All changes are saved in a single implicit transaction
-    await _context.SaveChangesAsync();
+    public async Task<Deck?> GetDeckByIdAsync(Guid deckId, CancellationToken ct = default)
+    {
+        return await context.Decks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.DeckId == deckId, ct);
+    }
 
-    return deck;
-}
-        public async Task<Deck?> RestoreDeckAsync(Guid deckId)
+    public async Task<Deck> CreateDeckAsync(Deck deck, CancellationToken ct = default)
+    {
+        await context.Decks.AddAsync(deck, ct);
+        await context.SaveChangesAsync(ct);
+        return deck;
+    }
+
+    public async Task<Deck?> UpdateDeckAsync(Deck deck, CancellationToken ct = default)
+    {
+        context.Decks.Update(deck);
+        await context.SaveChangesAsync(ct);
+        return deck;
+    }
+
+    public async Task<Deck?> SoftDeleteDeckAsync(Guid deckId, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+
+        if (!context.Database.IsRelational())
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            var inMemDeck = await context.Decks.FirstOrDefaultAsync(d => d.DeckId == deckId, ct);
+            if (inMemDeck is null) return null;
+
+            inMemDeck.SoftDelete(now);
+            var cards = await context.Cards.Where(c => c.DeckId == deckId).ToListAsync(ct);
+            foreach (var card in cards) card.SoftDelete(now);
+
+            await context.SaveChangesAsync(ct);
+            return inMemDeck;
+        }
+
+        var strategy = context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await context.Database.BeginTransactionAsync(ct);
             try
             {
-                var deck = await _context.Decks.FindAsync(deckId);
-                if (deck == null) return null;
+                var deck = await context.Decks
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(d => d.DeckId == deckId, ct);
+                if (deck is null) return null;
 
-                deck.IsDeleted = false;
-                deck.DeletedAt = null;
+                await context.Decks
+                    .Where(d => d.DeckId == deckId)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(d => d.IsDeleted, true)
+                        .SetProperty(d => d.DeletedAt, now), ct);
 
-                // Cascade restore to associated cards
-                var cards = await _context.Cards.Where(c => c.DeckId == deckId).ToListAsync();
-                foreach (var card in cards)
-                {
-                    card.IsDeleted = false;
-                    card.DeletedAt = null;
-                }
+                await context.Cards
+                    .Where(c => c.DeckId == deckId)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(c => c.IsDeleted, true)
+                        .SetProperty(c => c.DeletedAt, now), ct);
 
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await transaction.CommitAsync(ct);
 
+                deck.SoftDelete(now);
                 return deck;
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await transaction.RollbackAsync(ct);
                 throw;
             }
+        });
+    }
+
+    public async Task<Deck?> RestoreDeckAsync(Guid deckId, CancellationToken ct = default)
+    {
+        if (!context.Database.IsRelational())
+        {
+            var inMemDeck = await context.Decks
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(d => d.DeckId == deckId, ct);
+            if (inMemDeck is null) return null;
+
+            inMemDeck.Restore();
+            var cards = await context.Cards
+                .IgnoreQueryFilters()
+                .Where(c => c.DeckId == deckId)
+                .ToListAsync(ct);
+            foreach (var card in cards) card.Restore();
+
+            await context.SaveChangesAsync(ct);
+            return inMemDeck;
         }
+
+        var strategy = context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await context.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var deck = await context.Decks
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(d => d.DeckId == deckId, ct);
+                if (deck is null) return null;
+
+                await context.Decks
+                    .IgnoreQueryFilters()
+                    .Where(d => d.DeckId == deckId)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(d => d.IsDeleted, false)
+                        .SetProperty(d => d.DeletedAt, (DateTime?)null), ct);
+
+                await context.Cards
+                    .IgnoreQueryFilters()
+                    .Where(c => c.DeckId == deckId)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(c => c.IsDeleted, false)
+                        .SetProperty(c => c.DeletedAt, (DateTime?)null), ct);
+
+                await transaction.CommitAsync(ct);
+
+                deck.Restore();
+                return deck;
+            }
+            catch
+            {
+                await transaction.RollbackAsync(ct);
+                throw;
+            }
+        });
     }
 }

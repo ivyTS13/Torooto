@@ -1,154 +1,142 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Menu,
-  Sparkles,
-  User,
-  LogOut,
-  LogIn,
-} from "lucide-react";
+import { motion as Motion, AnimatePresence } from "framer-motion";
+import { Menu, User, LogOut, LogIn } from "lucide-react";
 import useAuthStore from "../stores/authStore";
+import EngravedAvatar from "./common/EngravedAvatar";
 
 const Navbar = ({
   toggleSidebar,
+  sidebarOpen,
   dropdownOpen,
   toggleDropdown,
   dropdownRef,
 }) => {
-  const { user, logout } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
-    navigate("/login"); // optionally redirect after logout
+    navigate("/login");
   };
 
-  const avatarUrl = user
-    ? user.image_url ||
-      `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        user.name
-      )}&background=6366f1&color=fff`
-    : null;
-
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-xl border-b border-white/5">
-      <div className="flex items-center justify-between px-4 md:px-8 py-3 md:py-4">
-        {/* Left: Brand */}
-        <div className="flex items-center space-x-3 md:space-x-6">
+    <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-[#0B0A0E]/95 border-b border-[#C5A059]/20">
+      <div className="flex h-full items-center justify-between px-4 md:px-6">
+        <div className="flex items-center gap-3 md:gap-4">
           <button
+            type="button"
             onClick={toggleSidebar}
-            className="text-gray-400 hover:text-white transition-colors p-2 rounded-xl hover:bg-white/5"
+            aria-label="Toggle sidebar navigation"
+            aria-expanded={sidebarOpen}
+            className="p-2 rounded-sm border border-transparent text-[#9E9689] hover:text-[#E8E2D5] hover:border-[#C5A059]/30 hover:bg-[#141218] transition-colors duration-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
           >
             <Menu size={20} />
           </button>
 
-          <Link to="/admin" className="flex items-center space-x-3 group">
-            <div className="relative">
-              <Sparkles
-                className="text-purple-400 animate-pulse group-hover:scale-110 transition-transform"
-                size={24}
-              />
-              <div className="absolute -inset-1 bg-purple-500/20 blur-lg rounded-full" />
-            </div>
-            {/* Hide brand text on very small screens, show on sm+ */}
-            <span className="hidden sm:inline text-white font-serif italic text-xl md:text-2xl tracking-tight bg-gradient-to-r from-white via-purple-200 to-indigo-300 bg-clip-text text-transparent">
+          <Link
+            to="/admin"
+            className="flex items-center gap-3 rounded-sm px-1 py-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
+          >
+            <span className="font-display text-lg md:text-xl tracking-[0.2em] uppercase text-[#E8E2D5]">
               Torooto
+            </span>
+            <span className="hidden sm:inline-block border-l border-[#C5A059]/30 pl-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[#C5A059]">
+              Curator Desk
             </span>
           </Link>
         </div>
 
-        {/* Right: Auth section */}
         <div className="relative" ref={dropdownRef}>
           {user ? (
-            // Logged in state – avatar + dropdown
             <>
               <button
+                type="button"
                 onClick={toggleDropdown}
-                className="flex items-center space-x-3 p-1 rounded-2xl hover:bg-white/5 transition-all border border-transparent hover:border-white/10"
+                aria-label="Open account menu"
+                aria-expanded={dropdownOpen}
+                aria-haspopup="menu"
+                className="flex items-center gap-2.5 p-1 rounded-sm hover:bg-[#141218] transition-colors duration-300 border border-transparent hover:border-[#C5A059]/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
               >
-                <div className="relative">
-                  <img
-                    src={avatarUrl}
-                    alt="Seeker"
-                    className="w-9 h-9 rounded-xl border border-white/20 object-cover grayscale-[0.3] hover:grayscale-0 transition-all"
-                  />
-                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#050505]" />
-                </div>
+                <EngravedAvatar user={user} size={34} className="rounded-sm" />
               </button>
 
               <AnimatePresence>
                 {dropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-4 w-64 bg-[#0a0a0a]/90 backdrop-blur-2xl rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 overflow-hidden"
+                  <Motion.div
+                    role="menu"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    transition={{
+                      duration: 0.25,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    className="folio-plate folio-inset absolute right-0 mt-3 w-64 rounded-sm overflow-hidden z-50"
                   >
-                    <div className="p-6 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent">
-                      <p className="text-white font-serif italic text-lg truncate">
-                        {user.name || "Wayward Soul"}
+                    <div className="px-5 py-4 border-b border-[#C5A059]/20 bg-[#1C1917]/50">
+                      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C5A059]">
+                        Curator Account
                       </p>
-                      <p className="text-gray-500 text-[10px] uppercase tracking-widest mt-1 font-bold">
-                        {user.email || "Hi witchhh"}
+                      <p className="mt-1 font-serif text-lg font-medium text-[#E8E2D5] truncate">
+                        {user.name || "Archivist"}
+                      </p>
+                      <p className="mt-0.5 font-mono text-[11px] text-[#9E9689] truncate">
+                        {user.email}
                       </p>
                     </div>
 
-                    <div className="p-2">
+                    <div className="p-2 space-y-1">
                       <DropdownItem
-                        to="admin/profile"
+                        to="/admin/profile"
                         icon={User}
                         label="Profile"
                         onClick={toggleDropdown}
                       />
-                      <div className="my-2 border-t border-white/5" />
+                      <div className="brass-divider my-1" />
                       <button
+                        role="menuitem"
+                        type="button"
                         onClick={handleLogout}
-                        className="w-full flex items-center space-x-4 px-5 py-4 text-rose-400 hover:bg-rose-500/10 rounded-2xl transition-all group"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-display tracking-[0.15em] uppercase text-[#C9A49A] hover:bg-[#5E1914]/35 hover:text-[#E8E2D5] rounded-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
                       >
-                        <LogOut
-                          size={18}
-                          className="group-hover:-translate-x-1 transition-transform"
-                        />
-                        <span className="text-[11px] uppercase tracking-[0.2em] font-bold">
-                          Log out
-                        </span>
+                        <LogOut size={16} />
+                        <span>Sign out</span>
                       </button>
                     </div>
-                  </motion.div>
+                  </Motion.div>
                 )}
               </AnimatePresence>
             </>
           ) : (
-            // Logged out state – only Log In button, responsive sizing
             <Link
               to="/login"
-              className="flex items-center space-x-2 px-3 py-2 md:px-4 md:py-2.5 text-gray-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-xs md:text-sm"
+              className="inline-flex items-center gap-2 px-3.5 py-2 border border-[#C5A059]/35 bg-[#141218] text-xs font-display uppercase tracking-[0.14em] text-[#E8E2D5] rounded-sm transition-colors duration-300 hover:border-[#C5A059]/65 hover:text-[#C5A059] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
             >
-              <LogIn size={16} className="md:size-18" />
-              <span className="uppercase tracking-wider font-bold">
-                Log In
-              </span>
+              <LogIn size={15} className="text-[#C5A059]" />
+              <span>Sign In</span>
             </Link>
           )}
         </div>
       </div>
-    </nav>
+    </header>
   );
 };
 
-// Dropdown item helper (unchanged)
-const DropdownItem = ({ to, icon: Icon, label, onClick }) => (
-  <Link
-    to={to}
-    onClick={onClick}
-    className="flex items-center space-x-4 px-5 py-4 text-gray-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all"
-  >
-    <Icon size={18} />
-    <span className="text-[11px] uppercase tracking-[0.2em] font-bold">
-      {label}
-    </span>
-  </Link>
-);
+const DropdownItem = ({ to, icon, label, onClick }) => {
+  const IconComponent = icon;
+  return (
+    <Link
+      role="menuitem"
+      to={to}
+      onClick={onClick}
+      className="flex items-center gap-3 px-4 py-2.5 text-xs font-display tracking-[0.15em] uppercase text-[#E8E2D5] hover:bg-[#1C1917] hover:text-[#C5A059] rounded-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
+    >
+      <IconComponent size={16} className="text-[#8A6D3B]" />
+      <span>{label}</span>
+    </Link>
+  );
+};
 
 export default Navbar;

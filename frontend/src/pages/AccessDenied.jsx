@@ -1,47 +1,43 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { FaLock } from 'react-icons/fa';
+import React from "react";
+import { motion as Motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { Lock } from "lucide-react";
+import FilmGrainOverlay from "../components/common/FilmGrainOverlay";
 
 const AccessDenied = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-950 to-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Background ambient warning glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 blur-[100px] rounded-full pointer-events-none" />
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
+    <main className="tarot-canvas min-h-[100dvh] flex flex-col items-center justify-center px-6 py-12 text-[#E8E2D5]">
+      <FilmGrainOverlay />
+      <Motion.div
+        initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="relative z-10 flex flex-col items-center text-center max-w-lg"
+        transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+        className="folio-plate folio-inset relative z-10 flex max-w-md w-full flex-col items-center rounded-sm p-8 sm:p-12 text-center"
       >
-        <motion.div
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-        >
-          <FaLock className="text-8xl text-amber-500/40 mb-8 drop-shadow-[0_0_15px_rgba(245,158,11,0.4)]" />
-        </motion.div>
+        <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-sm border border-[#C5A059]/40 bg-[#1C1917]">
+          <Lock size={26} strokeWidth={1.35} className="text-[#C5A059]" />
+        </div>
 
-        <h1 className="text-7xl font-bold text-white mb-4 tracking-tighter">
-          4<span className="text-amber-500">0</span>3
+        <p className="font-mono text-xs uppercase tracking-[0.28em] text-[#C5A059] tabular-nums mb-2">
+          Code 403
+        </p>
+
+        <h1 className="font-display text-3xl sm:text-4xl tracking-[0.12em] uppercase text-[#E8E2D5] mb-4">
+          Access Restricted
         </h1>
-        
-        <h2 className="text-2xl font-semibold text-gray-300 mb-6 tracking-wide uppercase">
-          Restricted Sector
-        </h2>
-        
-        <p className="text-gray-500 mb-10 leading-relaxed">
-          Your authorization clearance is insufficient for this coordinate. This data is protected by the High Council encryption.
+
+        <p className="font-serif text-base text-[#9E9689] leading-relaxed max-w-[44ch] mb-8">
+          Your current session lacks permission to view this archive section. Sign in with an authorized account or return to the main studio.
         </p>
 
         <Link
           to="/"
-          className="px-8 py-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-xl hover:bg-amber-500/20 hover:text-white hover:shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all duration-300 backdrop-blur-md"
+          className="inline-flex items-center justify-center rounded-sm bg-[#C5A059] hover:bg-[#D2B06B] px-7 py-2.5 font-display text-xs font-semibold uppercase tracking-[0.18em] text-[#0B0A0E] transition-colors duration-300 ease-ritual focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8E2D5] focus-visible:ring-offset-2 focus-visible:ring-offset-[#141218]"
         >
-          Request Clearance
+          Return to Reading Room
         </Link>
-      </motion.div>
-    </div>
+      </Motion.div>
+    </main>
   );
 };
 

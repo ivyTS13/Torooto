@@ -66,3 +66,6 @@ appsettings.*.Local.json
 # Entity Framework Core tooling / local files
 *.db-shm
 *.db-wal
+
+# --- Agent Skills (keep skills-lock.json tracked) ---
+.agents/skills/

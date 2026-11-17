@@ -1,192 +1,259 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { User, LogOut, LogIn, Sparkles } from "lucide-react";
+import { motion as Motion, AnimatePresence } from "framer-motion";
+import { User, LogOut, LogIn, Menu, X } from "lucide-react";
 import useAuthStore from "../../stores/authStore";
 import logoUrl from "../../assets/name.svg";
+import EngravedAvatar from "../common/EngravedAvatar";
 
-export default function Navbar() {
-  const { user, logout } = useAuthStore();
+const NAV_ITEMS = [
+  { label: "Tarot", to: "/" },
+  { label: "Decks", to: "/tarot" },
+  { label: "Piles", to: "/piles" },
+];
+
+const RITUAL_EASE = [0.22, 1, 0.36, 1];
+
+export default function UserNavbar({ currentPath: propPath }) {
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const navContainerRef = useRef(null);
   const location = useLocation();
-  const currentPath = location.pathname;
+  const currentPath = propPath || location.pathname;
 
-  const toggleDropdown = () => setDropdownOpen((prev) => !prev);
+  const toggleDropdown = () => {
+    setDropdownOpen((prev) => !prev);
+    setMobileMenuOpen(false);
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen((prev) => !prev);
+    setDropdownOpen(false);
+  };
 
   const handleLogout = () => {
     logout();
     setDropdownOpen(false);
+    setMobileMenuOpen(false);
     navigate("/login");
   };
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
       }
+      if (
+        navContainerRef.current &&
+        !navContainerRef.current.contains(event.target)
+      ) {
+        setMobileMenuOpen(false);
+      }
     };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setDropdownOpen(false);
+        setMobileMenuOpen(false);
+      }
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
-  const avatarUrl = user
-    ? user.image_url ||
-      `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        user.name || "User",
-      )}&background=6366f1&color=fff`
-    : null;
+  const isNavItemActive = (to) =>
+    to === "/"
+      ? currentPath === "/"
+      : currentPath === to || currentPath.startsWith(`${to}/`);
 
   return (
-    // Reduced px-4 to px-2 on mobile for less space on the edges
-    <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-2 sm:px-4 py-3 md:px-12 md:py-6 bg-transparent">
-      {/* Logo Section */}
-      <Link
-        to="/"
-        className="flex items-center gap-2 md:gap-3 transition-opacity hover:opacity-80 shrink-0"
+    <header
+      ref={navContainerRef}
+      className="fixed top-0 left-0 right-0 z-40 border-b border-[#C5A059]/20 bg-[#0B0A0E]/95"
+    >
+      <nav
+        aria-label="Primary navigation"
+        className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:px-6 md:px-8"
       >
-        <img
-          src={logoUrl}
-          alt="Logo text"
-          className="block h-8 w-auto max-w-[250px] sm:h-10 md:h-14 object-contain flex-shrink-0"
-        />
-      </Link>
-      {/* Navigation Pill Container */}
-      <div className="flex items-center p-1 md:p-1.5 rounded-[30px] bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
-        {/* Added whitespace-nowrap, reduced px/py for mobile, and tweaked text size to text-[11px] */}
         <Link
           to="/"
-          className={`whitespace-nowrap px-2.5 py-1.5 sm:px-3 sm:py-1.5 md:px-5 md:py-2 rounded-[20px] text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-300 ${
-            currentPath === "/"
-              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-white/10 backdrop-blur-[10px] shadow-lg shadow-indigo-500/10"
-              : "text-white/75 hover:text-white hover:bg-white/5"
-          }`}
+          onClick={() => setMobileMenuOpen(false)}
+          className="flex shrink-0 items-center rounded-sm py-1 transition-opacity duration-300 ease-ritual hover:opacity-85 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
         >
-          Tarot
-        </Link>
-        <Link
-          to="/tarot"
-          className={`whitespace-nowrap px-2.5 py-1.5 sm:px-3 sm:py-1.5 md:px-5 md:py-2 rounded-[20px] text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-300 ${
-            currentPath === "/tarot"
-              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-white/10 backdrop-blur-[10px] shadow-lg shadow-indigo-500/10"
-              : "text-white/75 hover:text-white hover:bg-white/5"
-          }`}
-        >
-          Decks
-        </Link>
-        <Link
-          to="/piles"
-          className={`whitespace-nowrap px-2.5 py-1.5 sm:px-3 sm:py-1.5 md:px-5 md:py-2 rounded-[20px] text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-300 ${
-            currentPath === "/piles"
-              ? "bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-white border border-white/10 backdrop-blur-[10px] shadow-lg shadow-indigo-500/10"
-              : "text-white/75 hover:text-white hover:bg-white/5"
-          }`}
-        >
-          Piles
+          <img
+            src={logoUrl}
+            alt="Torooto"
+            width={140}
+            height={32}
+            className="block h-6 w-auto sm:h-8 md:h-9 object-contain"
+          />
         </Link>
 
-        {/* User Avatar Section */}
-        {/* Added shrink-0 to prevent the avatar from compressing and becoming unclickable */}
-        <div
-          className="relative ml-0.5 sm:ml-1 md:ml-1 shrink-0"
-          ref={dropdownRef}
-        >
-          {user ? (
-            <>
-              <button
-                onClick={toggleDropdown}
-                className="flex items-center p-0.5 rounded-[18px] hover:bg-white/10 transition-all cursor-pointer shrink-0"
-              >
-                <div className="relative">
-                  <img
-                    src={avatarUrl}
-                    alt="User Avatar"
-                    className="w-7 h-7 md:w-8 md:h-8 rounded-[14px] md:rounded-[16px] object-cover border border-indigo-400/30 shadow-sm"
-                  />
-                  <div className="absolute -bottom-0.5 -right-0.5 w-2 md:w-2.5 h-2 md:h-2.5 bg-emerald-400 rounded-full border-2 border-[#030014] shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                </div>
-              </button>
+        {/* Desktop & Tablet Navigation (>= md) */}
+        <div className="flex items-center gap-2 md:gap-4">
+          <div className="hidden md:flex items-center border-r border-[#C5A059]/20 pr-4 gap-2">
+            {NAV_ITEMS.map((item) => {
+              const isActive = isNavItemActive(item.to);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`relative px-3 py-2 text-sm font-display tracking-[0.12em] uppercase transition-colors duration-300 ease-ritual rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059] ${
+                    isActive
+                      ? "text-[#C5A059]"
+                      : "text-[#9E9689] hover:text-[#E8E2D5]"
+                  }`}
+                >
+                  {item.label}
+                  {isActive && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-2 -bottom-[1px] h-[1px] bg-[#C5A059]"
+                    />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
 
-              <AnimatePresence>
-                {dropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 12, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="absolute right-0 mt-3 w-56 md:w-64 max-w-[90vw] bg-[#070514]/85 backdrop-blur-3xl rounded-[1.75rem] md:rounded-[2rem] shadow-[0_20px_50px_rgba(10,5,30,0.8),0_0_30px_rgba(99,102,241,0.15)] border border-indigo-500/20 overflow-hidden z-50"
-                  >
-                    {/* Cosmic Background Accent Glow */}
-                    <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-600/20 rounded-full blur-2xl pointer-events-none" />
-                    <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-600/20 rounded-full blur-2xl pointer-events-none" />
+          <div className="relative shrink-0" ref={dropdownRef}>
+            {user ? (
+              <>
+                <button
+                  type="button"
+                  onClick={toggleDropdown}
+                  aria-label="Open account menu"
+                  aria-expanded={dropdownOpen}
+                  aria-haspopup="menu"
+                  className="flex items-center gap-2 rounded-sm p-1 transition-colors duration-300 ease-ritual hover:bg-[#141218] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
+                >
+                  <EngravedAvatar user={user} size={32} className="rounded-sm" />
+                </button>
 
-                    {/* User Profile Header */}
-                    <div className="relative p-4 md:p-5 border-b border-white/10 bg-gradient-to-b from-indigo-950/30 to-transparent">
-                      <div className="flex items-center gap-2 text-indigo-300 mb-1">
-                        <Sparkles
-                          size={13}
-                          className="text-indigo-400 animate-pulse"
-                        />
-                        <span className="text-[10px] uppercase tracking-widest font-semibold">
-                          Connected Aura
-                        </span>
+                <AnimatePresence>
+                  {dropdownOpen && (
+                    <Motion.div
+                      role="menu"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      transition={{ duration: 0.25, ease: RITUAL_EASE }}
+                      className="folio-plate folio-inset absolute right-0 mt-2.5 w-60 max-w-[calc(100vw-1.5rem)] rounded-sm overflow-hidden z-50"
+                    >
+                      <div className="relative border-b border-[#C5A059]/20 bg-[#1C1917]/50 px-5 py-4">
+                        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C5A059]">
+                          Account
+                        </p>
+                        <p className="mt-1 font-serif text-lg font-medium text-[#E8E2D5] truncate">
+                          {user.name || "Member"}
+                        </p>
+                        <p className="mt-0.5 font-mono text-[11px] text-[#9E9689] truncate">
+                          {user.email}
+                        </p>
                       </div>
-                      <p className="text-white font-serif italic text-sm md:text-base truncate">
-                        {user.name || "Wayward Soul"}
-                      </p>
-                      <p className="text-indigo-200/60 text-[9px] md:text-[10px] uppercase tracking-widest mt-0.5 font-medium truncate">
-                        {user.email || "Hi witchhh"}
-                      </p>
-                    </div>
 
-                    {/* Menu Actions */}
-                    <div className="relative p-2 space-y-1">
-                      <Link
-                        to="/profile"
-                        onClick={() => setDropdownOpen(false)}
-                        className="flex items-center space-x-3 px-3 py-2.5 md:px-4 md:py-3 text-indigo-100/80 hover:text-white hover:bg-white/10 rounded-xl md:rounded-2xl transition-all group border border-transparent hover:border-white/5"
-                      >
-                        <User
-                          size={16}
-                          className="text-indigo-400 md:w-[18px] md:h-[18px] group-hover:scale-110 transition-transform"
-                        />
-                        <span className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] font-bold">
-                          Profile
-                        </span>
-                      </Link>
+                      <div className="p-2 space-y-1">
+                        <Link
+                          role="menuitem"
+                          to={user.is_superuser ? "/admin/profile" : "/profile"}
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-3 px-3.5 py-2.5 text-xs font-display tracking-[0.15em] uppercase text-[#E8E2D5] hover:bg-[#1C1917] hover:text-[#C5A059] rounded-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
+                        >
+                          <User size={15} className="text-[#8A6D3B]" />
+                          <span>Profile</span>
+                        </Link>
 
-                      <div className="my-1 border-t border-white/5 mx-2" />
+                        <div className="brass-divider my-1" />
 
-                      <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center space-x-3 px-3 py-2.5 md:px-4 md:py-3 text-rose-300 hover:text-rose-200 hover:bg-rose-500/15 rounded-xl md:rounded-2xl transition-all group border border-transparent hover:border-rose-500/20 cursor-pointer"
-                      >
-                        <LogOut
-                          size={16}
-                          className="md:w-[18px] md:h-[18px] group-hover:-translate-x-1 transition-transform"
-                        />
-                        <span className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] font-bold">
-                          Log out
-                        </span>
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </>
-          ) : (
-            <Link
-              to="/login"
-              className="px-3 py-1.5 md:px-4 md:py-2 rounded-[20px] text-xs md:text-sm font-medium text-white/75 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1 md:gap-1.5 shrink-0"
-            >
-              <LogIn size={14} className="md:w-[15px] md:h-[15px]" />
-              <span>Log In</span>
-            </Link>
-          )}
+                        <button
+                          role="menuitem"
+                          type="button"
+                          onClick={handleLogout}
+                          className="w-full flex items-center gap-3 px-3.5 py-2.5 text-xs font-display tracking-[0.15em] uppercase text-[#C9A49A] hover:bg-[#5E1914]/35 hover:text-[#E8E2D5] rounded-sm transition-colors duration-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
+                        >
+                          <LogOut size={15} />
+                          <span>Sign out</span>
+                        </button>
+                      </div>
+                    </Motion.div>
+                  )}
+                </AnimatePresence>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="inline-flex items-center gap-1.5 border border-[#C5A059]/35 bg-[#141218] px-3 py-1.5 text-[11px] sm:text-xs font-display uppercase tracking-[0.12em] text-[#E8E2D5] rounded-sm transition-colors duration-300 ease-ritual hover:border-[#C5A059]/65 hover:text-[#C5A059] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
+              >
+                <LogIn size={14} className="text-[#C5A059]" />
+                <span>Sign In</span>
+              </Link>
+            )}
+          </div>
+
+          {/* Mobile Menu Trigger (< 768px) */}
+          <button
+            type="button"
+            onClick={toggleMobileMenu}
+            aria-label={
+              mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"
+            }
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-primary-drawer"
+            className="md:hidden inline-flex items-center justify-center p-2 rounded-sm border border-[#C5A059]/25 bg-[#141218] text-[#E8E2D5] hover:border-[#C5A059]/60 hover:text-[#C5A059] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059]"
+          >
+            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {/* Mobile Drawer Panel (< 768px) */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <Motion.div
+            id="mobile-primary-drawer"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.28, ease: RITUAL_EASE }}
+            className="md:hidden border-t border-[#C5A059]/20 bg-[#141218] px-4 py-3 shadow-plate"
+          >
+            <div className="flex flex-col divide-y divide-[#C5A059]/15">
+              {NAV_ITEMS.map((item) => {
+                const isActive = isNavItemActive(item.to);
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center justify-between py-3 px-2 font-display text-xs uppercase tracking-[0.18em] rounded-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#C5A059] ${
+                      isActive
+                        ? "text-[#C5A059] bg-[#1C1917]"
+                        : "text-[#E8E2D5] hover:text-[#C5A059]"
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {isActive && (
+                      <span
+                        aria-hidden="true"
+                        className="h-1.5 w-1.5 rotate-45 bg-[#C5A059]"
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </Motion.div>
+        )}
+      </AnimatePresence>
+    </header>
   );
 }

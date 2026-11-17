@@ -9,7 +9,12 @@ const apiClient = axios.create({
   },
 });
 
-// --- REQUEST INTERCEPTOR ---
+const extractErrorMessage = (error, fallback) =>
+  error.response?.data?.message ||
+  error.response?.data?.detail ||
+  error.response?.data?.title ||
+  fallback;
+
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
   if (token) {
@@ -18,28 +23,18 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// --- RESPONSE INTERCEPTOR ---
 apiClient.interceptors.response.use(
-  (response) => {
-    // If your backend uses { success, data, message } envelope
-    return response.data?.data !== undefined
-      ? response.data.data
-      : response.data;
-  },
+  (response) =>
+    response.data?.data !== undefined ? response.data.data : response.data,
   (error) => {
     const status = error.response?.status;
-    const url = error.config?.url;  // get the request URL
+    const url = error.config?.url;
 
     if (status === 401) {
-      // ⚠️ Skip automatic logout for login and logout endpoints
       if (url && (url.includes("/auth/jwt/login") || url.includes("/auth/jwt/logout"))) {
-        // Just reject with the error message – the component (login) will handle it
-        return Promise.reject(
-          error.response?.data?.message || "Unauthorized"
-        );
+        return Promise.reject(extractErrorMessage(error, "Unauthorized"));
       }
 
-      // For all other endpoints, clear session and redirect
       useAuthStore.getState().logout();
       window.location.href = "/login";
       return Promise.reject("Session expired");
@@ -51,13 +46,10 @@ apiClient.interceptors.response.use(
       window.location.href = "/500";
     }
 
-    return Promise.reject(
-      error.response?.data?.message || "Something went wrong"
-    );
+    return Promise.reject(extractErrorMessage(error, "Something went wrong"));
   },
 );
 
-// --- WRAPPER FUNCTIONS ---
 export const api = {
   get: (url, config) => apiClient.get(url, config),
   post: (url, data, config) => apiClient.post(url, data, config),

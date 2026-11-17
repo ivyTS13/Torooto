@@ -1,41 +1,34 @@
 ﻿using Imagekit;
 using Imagekit.Models.Files;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using TorootoAPI.Application.Interfaces;
 
-namespace TorootoAPI.Infrastucture.Services
+namespace TorootoAPI.Infrastucture.Services;
+
+public sealed class ImageKitStorageService : IImageStorageService
 {
-    public class ImageKitStorageService : IImageStorageService
+    private readonly ImageKitClient _imageKit;
+
+    public ImageKitStorageService(IConfiguration configuration)
     {
-        private readonly ImageKitClient _imageKit;
-
-        public ImageKitStorageService(IConfiguration configuration)
+        var privateKey = configuration.GetSection("ImageKit")["PrivateKey"] ?? string.Empty;
+        _imageKit = new ImageKitClient
         {
-            var config = configuration.GetSection("ImageKit");
-            _imageKit = new ImageKitClient
-            {
-                PrivateKey = config["PrivateKey"]
-            };
-        }
+            PrivateKey = privateKey
+        };
+    }
 
-        public async Task<string> UploadImageAsync(IFormFile file, string fileName, string folder, List<string>? tags = null)
+    public async Task<string> UploadImageAsync(ImageUploadRequest request, CancellationToken ct = default)
+    {
+        var parameters = new FileUploadParams
         {
-            using var stream = file.OpenReadStream();
+            File = request.Content,
+            FileName = request.FileName,
+            Folder = request.Folder,
+            Tags = request.Tags?.ToList()
+        };
 
-            // Setup the upload parameters using the new SDK's model
-            FileUploadParams parameters = new()
-            {
-                File = stream,
-                FileName = fileName
-               
-            };
-
-            // Execute the upload
-            var response = await _imageKit.Files.Upload(parameters);
-
-            // Return the resulting URL (assuming standard FileUploadResponse properties)
-            return response.Url;
-        }
+        var response = await _imageKit.Files.Upload(parameters, ct);
+        return response.Url ?? throw new InvalidOperationException("Image storage provider did not return an upload URL.");
     }
 }

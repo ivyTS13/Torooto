@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\TorootoAPI.Application\TorootoAPI.Application.csproj" />
     <ProjectReference Include="..\TorootoAPI.Infrastucture\TorootoAPI.Infrastucture.csproj" />
   </ItemGroup>
 
